@@ -1,0 +1,49 @@
+#lang pie-impli
+
+;; A simple instantiation w/o claims or application
+(the (-> Nat (Vec Nat (add1 zero)) (Vec Nat (add1 (add1 zero))))
+  (λi
+    (λi
+      (λ (x ls)
+        (vec:: x ls)))))
+
+
+;; A simple claim/define, with a use
+(claim foo
+  (Πi ([z U])
+    (-> z (List z))))
+
+(define foo
+  (λi (λ (y) (:: y nil))))
+
+(foo (add1 zero))
+
+;; A little more complicated... (more args)
+(claim bar
+  (Πi ([z U])
+    (-> z (List z) (List z))))
+
+(define bar
+  (λi (λ (y ls) (:: y ls))))
+
+(bar zero (:: (add1 zero) nil))
+
+;; A little more complicated... (more than 1 implicit argument)
+(claim foo1
+  (Πi ([X U])
+    (Πi ([y Nat])
+        (-> X (Vec X y) (Vec X (add1 y))))))
+
+(define foo1
+  (λi
+    (λi
+      (λ (x ls)
+        (vec:: x ls)))))
+
+((foo1 zero) vecnil)
+
+
+
+
+
+ 

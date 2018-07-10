@@ -1,0 +1,116 @@
+#lang pie-impli
+
+(claim succ (-> Nat Nat))
+(define succ (λ (n) (add1 n)))
+(claim + (-> Nat Nat Nat))
+(define + (λ (n m) (iter-Nat n m succ)))
+
+; this doesn't typecheck -- good!
+#;(the (Πi ([X U])
+       (-> X X))
+  (λi (λ (x) zero)))
+
+;; A simple instantiation w/o claims or application
+(the (-> Nat (Vec Nat (add1 zero)) (Vec Nat (add1 (add1 zero))))
+  (λi
+    (λi
+      (λ (x ls)
+        (vec:: x ls)))))
+
+
+(claim foo1
+  (Πi ([z U])
+    (-> z (List z))))
+
+(define foo1
+  (λi (λ (y) (:: y nil))))
+
+(foo1 (add1 zero))
+
+;; We can also find values that aren't types!
+(claim bar1
+  (Πi ([y Nat])
+    (-> (Vec Nat y) (Vec Nat (add1 y)))))
+
+(define bar1
+  (λi (λ (vec) (vec:: (add1 zero) vec))))
+
+(bar1 (the (Vec Nat 0) vecnil))
+
+;; A little more complicated... (more args)
+
+
+(claim foo
+  (Πi ([z U])
+    (-> z (List z) (List z))))
+
+(define foo
+  (λi (λ (y ls) (:: y ls))))
+
+(foo zero (:: (add1 zero) nil))
+
+;; A little more complicated... (more than 1 implicit argument)
+
+
+(claim bar
+  (Πi ([X U])
+    (-> X 
+      (Πi ([y Nat])
+        (-> (Vec X y)
+          (Vec X (add1 y)))))))
+
+(define bar
+  (λi
+    (λ (x)
+      (λi
+        (λ (vec)
+          (vec:: x vec))))))
+
+(bar zero (the (Vec Nat zero) vecnil))
+
+;; This is cool -- we actually have access to implicit
+;; arguments in function bodies!
+(claim weirdness
+  (Πi ([j Nat])
+        (-> (Vec Nat j) Nat)))
+(define weirdness
+  (λi
+      (λ (vec) (add1 j))))
+(weirdness (the (Vec Nat 0) vecnil))
+
+;; OK, an actually useful function
+(claim vec-map
+  (Πi ([X U])
+    (Πi ([Y U])
+        (-> (-> X Y)
+          (Πi ([k Nat])
+            (-> (Vec X k)
+              (Vec Y k)))))))
+
+(define vec-map
+  (λi
+    (λi
+      (λ (f)
+        (λi
+          (λ (vec)
+            (ind-Vec k vec
+              (λ (k vec) (Vec Y k))
+              vecnil
+              (λ (k-1 h t almost)
+                (vec:: (f h) almost)))))))))
+
+(vec-map
+  (the (-> Nat Atom)
+    (λ (x) 'wonks))
+  (the (Vec Nat 2)
+    (vec:: (add1 zero) (vec:: zero vecnil))))
+
+#;(vec-map
+  (the (Πi ([X U]) (-> X Atom))
+    (λi (λ (x) 'wonks)))
+  (the (Vec Nat 2)
+    (vec:: (add1 zero) (vec:: zero vecnil))))
+
+
+
+ 

@@ -1,0 +1,1 @@
+("6.10.1" ("a1d480d29e27188b445c10117b19a2c0aa8c4415" . "fcda58fc087396af2740ef29030f61ad432a9ac7") #"/Users/benboskin/Desktop/pie-impli/mk.rkt" #"/Users/benboskin/Desktop/pie-impli/relational_basics.rkt" (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))
