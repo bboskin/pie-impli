@@ -316,25 +316,25 @@ real quick, proofs just about the natural # fns
   (-> Integer Integer U))
 (define Int=-conseq
   (λ (k j)
-    (ind-Either
-      k
-      (λ (_) U)
-      (λ (neg-k)
-        (ind-Either j
-          (λ (_) U)
-          (λ (neg-j)
-            (which-Nat neg-k
-              (which-Nat neg-j Trivial (λ (_) Absurd))
-              (λ (neg-k-1) (which-Nat neg-j Absurd (λ (neg-j-1) (= Integer (Negative neg-k-1) (Negative neg-j-1)))))))
-          (λ (pos-j) Absurd)))
-      (λ (pos-k)
-        (ind-Either j
-          (λ (_) U)
-          (λ (neg-j) Absurd)
-          (λ (pos-j)
-            (which-Nat pos-k
-              (which-Nat pos-j Trivial (λ (_) Absurd))
-              (λ (pos-k-1) (which-Nat pos-j Absurd (λ (pos-j-1) (= Integer (Positive pos-k-1) (Positive pos-j-1))))))))))))
+    (which-Either k
+      (the (-> Nat U)
+        (λ (neg-k)
+          (the U
+            (which-Either j
+              (the (-> Nat U)
+                (λ (neg-j)
+                 (the U (which-Nat neg-k
+                    (which-Nat neg-j Trivial (λ (_) Absurd))
+                    (λ (neg-k-1) (which-Nat neg-j Absurd (λ (neg-j-1) (= Integer (Negative neg-k-1) (Negative neg-j-1)))))))))
+              (λ (pos-j) Absurd)))))
+      TODO #;(the (-> Nat U)
+        (λ (pos-k)
+          (which-Either j
+            (λ (neg-j) Absurd)
+            (λ (pos-j)
+              (which-Nat pos-k
+                (which-Nat pos-j Trivial (λ (_) Absurd))
+                (λ (pos-k-1) (which-Nat pos-j Absurd (λ (pos-j-1) (= Integer (Positive pos-k-1) (Positive pos-j-1)))))))))))))
 
 (claim Int=-conseq-same
   (Π ([k Integer])

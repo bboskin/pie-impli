@@ -564,10 +564,15 @@
               (match (val-in-ctx Γ tgt-t)
                 [(EITHER Lv Rv)
                  (let ([x^ (fresh Γ 'x)])
-                   (go-on ((`(the ,ty ,l-out) (synth Γ r on-left))
-                           (r-out (check Γ r on-right (val-in-ctx Γ ty))))
-                          (go `(the ,ty
-                                    (which-Either ,tgt-out ,l-out ,r-out)))))]
+                   (go-on ((`(the ,l-ty ,l-out) (synth Γ r on-left))
+                           (`(the ,r-ty ,r-out) (synth Γ r on-right)))
+                          (if (α-equiv? l-ty r-ty)
+                              (go `(the ,l-ty
+                                    (which-Either ,tgt-out
+                                                  (the ,l-ty ,l-out)
+                                                  (the ,r-ty ,r-out))))
+                              (stop (src-loc e)
+                                    `("Expected two equivalent types, got" ,l-ty "and" ,r-ty)))))]
                 [non-Either
                  (stop (src-loc e)
                        `("Expected an Either, but got a"
