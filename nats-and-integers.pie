@@ -1,0 +1,2061 @@
+#lang pie-impli
+
+;; definition of a group
+
+(claim is-Assoc
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define is-Assoc
+  (λ (S f)
+    (Π ([x S]
+        [y S]
+        [z S])
+       (= S
+          (f x (f y z))
+          (f (f x y) z)))))
+
+(claim is-Comm
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define is-Comm
+  (λ (S f)
+    (Π ([x S]
+        [y S])
+       (= S
+          (f x y)
+          (f y x)))))
+
+(claim has-Identity
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define has-Identity
+  (λ (S f)
+    (Σ ([e S])
+      (Π ([k S])
+         (Pair (= S (f e k) k)
+               (= S (f k e) k))))))
+
+(claim has-Inverses
+  (Π ([S U]
+      [f (-> S S S)]
+      [e (has-Identity S f)]) U))
+(define has-Inverses
+  (λ (S f e)
+    (Π ([k S])
+      (Σ ([k-inv S])
+         (Pair
+          (= S (f k k-inv) (car e))
+          (= S (f k-inv k) (car e)))))))
+
+(claim Distributes-Left
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Distributes-Left
+  (λ (S + *)
+    (Π ([x S] [y S] [z S])
+      (= S
+         (* (+ x y) z)
+         (+ (* x z) (* y z))))))
+
+(claim Distributes-Right
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Distributes-Right
+  (λ (S + *)
+    (Π ([x S] [y S] [z S])
+      (= S
+         (* x (+ y z))
+         (+ (* x y) (* x z))))))
+
+(claim Group
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define Group
+  (λ (S f)
+    (Pair (is-Assoc S f)
+      (Σ ([e (has-Identity S f)])
+        (has-Inverses S f e)))))
+
+(claim Abelian-Group
+  (Π ([S U]) (-> (-> S S S) U)))
+(define Abelian-Group
+  (λ (S f)
+    (Pair (Group S f)
+      (is-Comm S f))))
+
+(claim Ring
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Ring
+  (λ (S + *)
+    (Pair (Abelian-Group S +)
+      (Pair (is-Assoc S *)
+        (Pair (Distributes-Left S + *)
+          (Distributes-Right S + *))))))
+
+(claim Ring-With-Unit-Element
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Ring-With-Unit-Element
+  (λ (S + *)
+    (Pair (Ring S + *)
+      (has-Identity S *))))
+
+(claim Commutative-Ring
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Commutative-Ring
+  (λ (S + *)
+    (Pair (Ring S + *)
+      (is-Comm S *))))
+
+(claim No-Proper-Divisors
+  (Π ([S U])
+    (-> (-> S S S) S U)))
+(define No-Proper-Divisors
+  (λ (S * z)
+    (Π ([x S]
+        [y S])
+      (-> (= S (* x y) z)
+          (Either (= S x z) (= S y z))))))
+
+(claim Integral-Domain
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Integral-Domain
+  (λ (S + *)
+    (Pair (Commutative-Ring S + *)
+      (Σ ([z S])
+        (No-Proper-Divisors S * z)))))
+
+
+;; TODO define unit element, field
+
+; set naming conventions?
+
+;; trying to prove that the Integers are a group under +
+;; an integer is a sum type, where negatives are in the left and positives are the right.
+;; Negative 0 is -1, the values are all
+;; shifted like that so that there is a unique 0
+
+
+(claim Id (Π ([S U]) (-> S S)))
+(define Id (λ (S x) x))
+
+(claim Integer U)
+(define Integer (Either Nat Nat))
+(claim Sign U)
+(define Sign (-> Nat Integer))
+(claim Negative Sign)
+(define Negative (λ (k) (left k)))
+(claim Positive Sign)
+(define Positive (λ (k) (right k)))
+(claim Zero Integer)
+(define Zero (Positive 0))
+
+(claim succ (-> Nat Nat))
+(define succ (λ (x) (add1 x)))
+(claim succ2 (-> Nat Nat))
+(define succ2 (λ (x) (add1 (add1 x))))
+(claim plus (-> Nat Nat Nat))
+(define plus
+  (λ (j k) (iter-Nat j k succ)))
+(claim times (-> Nat Nat Nat))
+(define times
+  (λ (j k) (iter-Nat j zero (plus k))))
+
+
+#|
+real quick, proofs just about the natural # fns
+|#
+(claim +-add1-r
+  (Π ([k Nat]
+      [j Nat])
+    (= Nat (add1 (plus k j)) (plus k (add1 j)))))
+(define +-add1-r TODO)
+(claim abs (-> Integer Nat))
+(define abs
+  (λ (j)
+    (ind-Either j
+      (λ (_) Nat)
+      succ
+      (Id Nat))))
+
+(claim Abs (-> Integer Integer))
+(define Abs
+  (λ (j)
+    (ind-Either j
+      (λ (_) Integer)
+      (λ (neg) (Positive (add1 neg)))
+      (λ (pos) (Positive pos)))))
+
+(claim Int->Nat (-> Integer Nat))
+(define Int->Nat
+  (λ (j)
+    (ind-Either j
+      (λ (_) Nat)
+      (λ (neg)
+        (iter-Nat neg
+          1
+          succ2))
+      (λ (pos)
+        (iter-Nat pos
+          0
+          succ2)))))
+
+
+(claim Next-Int (-> Integer Integer))
+(define Next-Int
+  (λ (k)
+    (ind-Either k
+      (λ (_) Integer)
+      (λ (neg) (Positive (add1 neg)))
+      (λ (pos) (Negative pos)))))
+
+
+(claim Nat->Int (-> Nat Integer))
+(define Nat->Int
+  (λ (j)
+    (iter-Nat j
+      (Positive 0)
+      Next-Int)))
+
+(claim next-int-add1-neg-corr
+  (Π ([k Nat])
+    (= Nat (Int->Nat (Next-Int (Negative k)))
+       (add1 (Int->Nat (Negative k))))))
+(define next-int-add1-neg-corr
+  (λ (neg)
+    (ind-Nat neg
+      (λ (neg)
+        (= Nat
+          (Int->Nat (Next-Int (Negative neg)))
+          (add1 (Int->Nat (Negative neg)))))
+      (same 2)
+      (λ (neg-1 IH)
+        (cong IH succ2)))))
+(claim next-int-add1-pos-corr
+  (Π ([k Nat])
+    (= Nat (Int->Nat (Next-Int (Positive k)))
+       (add1 (Int->Nat (Positive k))))))
+(define next-int-add1-pos-corr
+  (λ (neg)
+    (ind-Nat neg
+      (λ (neg)
+        (= Nat
+          (Int->Nat (Next-Int (Positive neg)))
+          (add1 (Int->Nat (Positive neg)))))
+      (same 1)
+      (λ (neg-1 IH)
+        (cong IH succ2)))))
+
+(claim next-int-add1-corr
+  (Π ([k Integer])
+    (= Nat (Int->Nat (Next-Int k))
+       (add1 (Int->Nat k)))))
+(define next-int-add1-corr
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (= Nat
+          (Int->Nat (Next-Int k))
+          (add1 (Int->Nat k))))
+      next-int-add1-neg-corr
+      next-int-add1-pos-corr)))
+
+(claim Nat->Int->Nat-same
+  (Π ([k Nat])
+    (= Nat (Int->Nat (Nat->Int k)) k)))
+(define Nat->Int->Nat-same
+  (λ (k)
+    (ind-Nat k
+      (λ (k) (= Nat (Int->Nat (Nat->Int k)) k))
+      (same 0)
+      (λ (k-1 IH)
+        (equal Nat
+          (Int->Nat (Next-Int (Nat->Int k-1)))
+          #:by (next-int-add1-corr (Nat->Int k-1))
+          (add1 (Int->Nat (Nat->Int k-1)))
+          #:by (cong IH succ)
+          (add1 k-1))))))
+
+(claim Int->Nat->Int-same
+  (Π ([k Integer])
+    (= Integer (Nat->Int (Int->Nat k)) k)))
+(define Int->Nat->Int-same
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (Nat->Int (Int->Nat k)) k))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg)
+            (= Integer
+              (Nat->Int (Int->Nat (Negative neg)))
+              (Negative neg)))
+          (same (Negative 0))
+          (λ (neg-1 IH)
+            (cong IH
+              (the (-> Integer Integer)
+                (λ (x) (Next-Int (Next-Int x))))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos)
+            (= Integer
+              (Nat->Int (Int->Nat (Positive pos)))
+              (Positive pos)))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (cong IH
+              (the (-> Integer Integer)
+                (λ (x) (Next-Int (Next-Int x)))))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Equality of Integers
+
+(claim Int=-conseq
+  (-> Integer Integer U))
+(define Int=-conseq
+  (λ (k j)
+    (ind-Either
+      k
+      (λ (_) U)
+      (λ (neg-k)
+        (ind-Either j
+          (λ (_) U)
+          (λ (neg-j)
+            (which-Nat neg-k
+              (which-Nat neg-j Trivial (λ (_) Absurd))
+              (λ (neg-k-1) (which-Nat neg-j Absurd (λ (neg-j-1) (= Integer (Negative neg-k-1) (Negative neg-j-1)))))))
+          (λ (pos-j) Absurd)))
+      (λ (pos-k)
+        (ind-Either j
+          (λ (_) U)
+          (λ (neg-j) Absurd)
+          (λ (pos-j)
+            (which-Nat pos-k
+              (which-Nat pos-j Trivial (λ (_) Absurd))
+              (λ (pos-k-1) (which-Nat pos-j Absurd (λ (pos-j-1) (= Integer (Positive pos-k-1) (Positive pos-j-1))))))))))))
+
+(claim Int=-conseq-same
+  (Π ([k Integer])
+    (Int=-conseq k k)))
+(define Int=-conseq-same
+  (λ (k)
+    (ind-Either k
+      (λ (k) (Int=-conseq k k))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg) (Int=-conseq (Negative neg) (Negative neg)))
+          sole
+          (λ (neg-1 IH)
+            (same (Negative neg-1)))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos) (Int=-conseq (Positive pos) (Positive pos)))
+          sole
+          (λ (pos-1 IH)
+            (same (Positive pos-1))))))))
+
+(claim use-Int=
+  (Π ([k Integer]
+      [j Integer])
+    (-> (= Integer k j)
+        (Int=-conseq k j))))
+(define use-Int=
+  (λ (k j pf)
+    (replace pf
+      (λ (?) (Int=-conseq k ?))
+      (Int=-conseq-same k))))
+
+;; Functions used to define Integer addition and multiplication
+
+(claim Negate (-> Integer Integer))
+(define Negate
+  (λ (k)
+    (ind-Either k
+      (λ (_) Integer)
+      (λ (neg) (Positive (add1 neg)))
+      (λ (pos) (which-Nat pos
+                 (Positive 0)
+                 (λ (pos-1) (Negative pos-1)))))))
+
+(claim Intsub1 (-> Integer Integer))
+(define Intsub1
+  (λ (k)
+    (ind-Either k
+      (λ (k) Integer)
+      (λ (neg)
+        (Negative (add1 neg)))
+      (λ (pos)
+        (which-Nat pos (Negative 0)
+          (λ (pos-1)
+            (Positive pos-1)))))))
+
+(claim Intadd1 (-> Integer Integer))
+(define Intadd1
+  (λ (k)
+    (ind-Either k
+      (λ (k) Integer)
+      (λ (neg)
+        (which-Nat neg (Positive 0)
+          (λ (neg+1) (Negative neg+1))))
+      (λ (pos)
+        (Positive (add1 pos))))))
+
+;; basic proofs about relationships between negate, sub1, and add1
+
+(claim neg-neg-idemp
+  (Π ([k Integer])
+    (= Integer (Negate (Negate k)) k)))
+(define neg-neg-idemp
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (Negate (Negate k)) k))
+      (λ (neg) (same (Negative neg)))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (p)
+            (= Integer (Negate (Negate (Positive p))) (Positive p)))
+          (same (Positive 0))
+          (λ (pos-1 ans)
+            (same (Positive (add1 pos-1)))))))))
+
+(claim Intadd1-sub1-idemp
+  (Π ([k Integer])
+    (= Integer k (Intadd1 (Intsub1 k)))))
+(define Intadd1-sub1-idemp
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer k (Intadd1 (Intsub1 k))))
+      (λ (neg) (same (left neg)))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos)
+            (= Integer
+              (Positive pos)
+              (Intadd1 (Intsub1 (Positive pos)))))
+          (same (right 0))
+          (λ (pos-1 ans)
+            (same (Positive (add1 pos-1)))))))))
+
+(claim Intsub1-add1-idemp
+  (Π ([k Integer])
+    (= Integer k (Intsub1 (Intadd1 k)))))
+(define Intsub1-add1-idemp
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer k (Intsub1 (Intadd1 k))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg) (= Integer (Negative neg) (Intsub1 (Intadd1 (Negative neg)))))
+          (same (left 0))
+          (λ (neg+1 ans)
+            (same (Negative (add1 neg+1))))))
+      (λ (pos) (same (right pos))))))
+
+(claim negate-add1-swap
+  (Π ([k Integer])
+    (= Integer (Negate (Intadd1 k))
+       (Intsub1 (Negate k)))))
+(define negate-add1-swap
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (= Integer (Negate (Intadd1 k))
+          (Intsub1 (Negate k))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (n)
+            (= Integer (Negate (Intadd1 (Negative n)))
+              (Intsub1 (Negate (Negative n)))))
+          (same (Positive 0))
+          (λ (n-1 IH)
+            (same (Positive (add1 n-1))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (p)
+            (= Integer (Negate (Intadd1 (Positive p)))
+              (Intsub1 (Negate (Positive p)))))
+          (same (Negative 0))
+          (λ (p-1 IH)
+            (same (Negative (add1 p-1)))))))))
+
+(claim negate-sub1-swap
+  (Π ([k Integer])
+    (= Integer (Negate (Intsub1 k))
+       (Intadd1 (Negate k)))))
+(define negate-sub1-swap
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (= Integer (Negate (Intsub1 k))
+          (Intadd1 (Negate k))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (n)
+            (= Integer (Negate (Intsub1 (Negative n)))
+              (Intadd1 (Negate (Negative n)))))
+          (same (Positive 2))
+          (λ (n-1 IH)
+            (same (Positive (add1 (add1 (add1 n-1))))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (p)
+            (= Integer (Negate (Intsub1 (Positive p)))
+              (Intadd1 (Negate (Positive p)))))
+          (same (Positive 1))
+          (λ (p-1 IH)
+            (equal Integer
+              (Negate (Intsub1 (Intadd1 (Positive p-1))))
+              #:by (cong (Intsub1-add1-idemp (Positive p-1)) Negate)
+              (Negate (Positive p-1))
+              #:by (Intadd1-sub1-idemp (Negate (Positive p-1)))
+              (Intadd1 (Intsub1 (Negate (Positive p-1))))
+              #:by (cong (symm (negate-add1-swap (Positive p-1))) Intadd1)
+              (Intadd1 (Negate (Intadd1 (Positive p-1)))))))))))
+
+;; definitions of addition and multiplication
+
+(claim IntPlus (-> Integer Integer Integer))
+(define IntPlus
+  (λ (j k)
+    (ind-Either j
+      (λ (_) Integer)
+      (λ (neg1)
+        (iter-Nat neg1 (Intsub1 k) Intsub1))
+      (λ (pos1)
+        (iter-Nat pos1 k Intadd1)))))
+
+(claim IntTimes (-> Integer Integer Integer))
+(define IntTimes
+  (λ (j k)
+    (ind-Either j
+      (λ (j) Integer)
+      (λ (neg)
+        (iter-Nat neg
+          (Negate k)
+          (IntPlus (Negate k))))
+      (λ (pos)
+        (iter-Nat pos
+          (Positive 0)
+          (IntPlus k))))))
+
+;; correctness proofs for + and * showing a correspondence between Integers and Nats
+
+#;(claim +-correct
+  (Π ([k Integer]
+      [j Integer])
+    (= Nat
+       (Int->Nat (IntPlus k j))
+       (plus (Int->Nat k) (Int->Nat j)))))
+#;(define +-correct
+  (λ (k j)
+    (ind-Either k
+      (λ (k) (= Nat
+               (Int->Nat (IntPlus k j))
+               (plus (Int->Nat k) (Int->Nat j))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg)
+            (= Nat
+              (Int->Nat (IntPlus (Negative neg) j))
+              (plus (Int->Nat (Negative neg)) (Int->Nat j))))
+          (equal Nat
+            (Int->Nat (Intsub1 j))
+            #:by TODO
+            (add1 (Int->Nat j)))
+          (λ (neg-1 IH)
+            TODO)))
+      (λ (pos) TODO))))
+
+(claim *-correct
+  (Π ([k Integer]
+      [j Integer])
+    (= Nat
+       (Int->Nat (IntTimes k j))
+       (times (Int->Nat k) (Int->Nat j)))))
+(define *-correct
+  (λ (k j)
+    (ind-Either k
+      (λ (k) (= Nat
+               (Int->Nat (IntTimes k j))
+               (times (Int->Nat k) (Int->Nat j))))
+      (λ (neg) TODO)
+      (λ (pos) TODO))))
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; proofs about addition
+#|
+
+;; Proof that zero is an identity on the left and right
+(claim +-zero-l
+  (Π ([k Integer])
+    (= Integer (IntPlus (Positive 0) k) k)))
+(define +-zero-l
+  (λ (k) (same k)))
+
+(claim +-zero-r
+  (Π ([k Integer])
+    (= Integer (IntPlus k (Positive 0)) k)))
+(define +-zero-r
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntPlus k (Positive 0)) k))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg) (= Integer (IntPlus (Negative neg) (Positive 0)) (Negative neg)))
+          (same (Negative 0))
+          (λ (neg-1 ans)
+            (cong ans Intsub1))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos) (= Integer (IntPlus (Positive pos) (Positive 0)) (Positive pos)))
+          (same (Positive 0))
+          (λ (pos-1 ans)
+            (cong ans Intadd1)))))))
+
+#;
+(claim +-Has-Identity
+  (has-Identity Integer IntPlus))
+#;
+(define +-Has-Identity
+  (cons (Positive 0)
+    (λ (k)
+      (cons (+-zero-l k)
+        (+-zero-r k)))))
+
+;; Proof that + is associative
+
+(claim +-sub1-l-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntPlus (Intsub1 (Negative k)) j)
+       (Intsub1 (IntPlus (Negative k) j)))))
+(define +-sub1-l-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer
+          (IntPlus (Intsub1 (Negative k)) j)
+          (Intsub1 (IntPlus (Negative k) j))))
+      (same (Intsub1 (Intsub1 j)))
+      (λ (k-1 ans)
+        (cong ans Intsub1)))))
+
+(claim +-add1-l-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntPlus (Intadd1 (Negative k)) j)
+       (Intadd1 (IntPlus (Negative k) j)))))
+(define +-add1-l-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer
+          (IntPlus (Intadd1 (Negative k)) j)
+          (Intadd1 (IntPlus (Negative k) j))))
+      (Intadd1-sub1-idemp j)
+      (λ (k-1 ans)
+        (Intadd1-sub1-idemp (IntPlus (Negative k-1) j))))))
+
+(claim +-sub1-l-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntPlus (Intsub1 (Positive k)) j)
+       (Intsub1 (IntPlus (Positive k) j)))))
+(define +-sub1-l-pos
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer
+          (IntPlus (Intsub1 (Positive k)) j)
+          (Intsub1 (IntPlus (Positive k) j))))
+      (same (Intsub1 j))
+      (λ (k-1 ans)
+        (Intsub1-add1-idemp (IntPlus (Positive k-1) j))))))
+
+(claim +-add1-l-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntPlus (Intadd1 (Positive k)) j)
+       (Intadd1 (IntPlus (Positive k) j)))))
+
+(define +-add1-l-pos
+  (λ (k)
+    (ind-Nat k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer
+                  (IntPlus (Intadd1 (Positive k)) j)
+                  (Intadd1 (IntPlus (Positive k) j)))))
+      (λ (j) (same (Intadd1 j)))
+      (λ (k-1 ans)
+        (λ (j)
+          (same (Intadd1 (Intadd1 (IntPlus (Positive k-1) j)))))))))
+
+(claim +-add1-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntPlus (Intadd1 k) j)
+       (Intadd1 (IntPlus k j)))))
+(define +-add1-l
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer
+             (IntPlus (Intadd1 k) j)
+             (Intadd1 (IntPlus k j)))))
+      +-add1-l-neg
+      +-add1-l-pos)))
+
+(claim +-sub1-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntPlus (Intsub1 k) j)
+       (Intsub1 (IntPlus k j)))))
+(define +-sub1-l
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer
+             (IntPlus (Intsub1 k) j)
+             (Intsub1 (IntPlus k j)))))
+      +-sub1-l-neg
+      +-sub1-l-pos)))
+
+(claim +-assoc-neg
+  (Π ([neg Nat]
+      [j Integer]
+      [l Integer])
+    (= Integer (IntPlus (Negative neg) (IntPlus j l))
+       (IntPlus (IntPlus (Negative neg) j) l))))
+
+(define +-assoc-neg
+  (λ (neg)
+    (ind-Nat neg
+      (λ (neg)
+        (Π ([j Integer]
+            [l Integer])
+          (= Integer (IntPlus (Negative neg) (IntPlus j l))
+             (IntPlus (IntPlus (Negative neg) j) l))))
+      (λ (j l)
+        (symm (+-sub1-l j l)))
+      (λ (neg-1 ans)
+        (λ (j l)
+          (equal Integer
+            (Intsub1 (IntPlus (Negative neg-1) (IntPlus j l)))
+            #:by (cong (ans j l) Intsub1)
+            (Intsub1 (IntPlus (IntPlus (Negative neg-1) j) l))
+            #:by (symm (+-sub1-l (IntPlus (Negative neg-1) j) l))
+            (IntPlus (Intsub1 (IntPlus (Negative neg-1) j)) l)))))))
+
+(claim +-assoc-pos
+  (Π ([pos Nat]
+      [j Integer]
+      [l Integer])
+    (= Integer (IntPlus (Positive pos) (IntPlus j l))
+       (IntPlus (IntPlus (Positive pos) j) l))))
+(define +-assoc-pos
+  (λ (pos)
+    (ind-Nat pos
+      (λ (pos)
+        (Π ([j Integer]
+            [l Integer])
+          (= Integer (IntPlus (Positive pos) (IntPlus j l))
+             (IntPlus (IntPlus (Positive pos) j) l))))
+      (λ (j l) (same (IntPlus j l)))
+      (λ (pos-1 ans)
+        (λ (j l)
+          (equal Integer
+            (Intadd1 (IntPlus (Positive pos-1) (IntPlus j l)))
+            #:by (cong (ans j l) Intadd1)
+            (Intadd1 (IntPlus (IntPlus (Positive pos-1) j) l))
+            #:by (symm (+-add1-l (IntPlus (Positive pos-1) j) l))
+            (IntPlus (Intadd1 (IntPlus (Positive pos-1) j)) l)))))))
+
+(claim +-assoc
+  (Π ([k Integer]
+      [j Integer]
+      [l Integer])
+    (= Integer (IntPlus k (IntPlus j l))
+       (IntPlus (IntPlus k j) l))))
+
+(define +-assoc
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer]
+            [l Integer])
+          (= Integer (IntPlus k (IntPlus j l))
+             (IntPlus (IntPlus k j) l))))
+        +-assoc-neg
+        +-assoc-pos)))
+
+;; proof that + has inverses
+
+(claim +-add1-r-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (IntPlus (Negative k) (Intadd1 j))
+       (Intadd1 (IntPlus (Negative k) j)))))
+(define +-add1-r-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (IntPlus (Negative k) (Intadd1 j))
+               (Intadd1 (IntPlus (Negative k) j))))
+      (trans (symm (Intsub1-add1-idemp j))
+        (Intadd1-sub1-idemp j))
+      (λ (k-1 ans)
+        (trans (cong ans Intsub1)
+          (trans (symm (Intsub1-add1-idemp (IntPlus (Negative k-1) j)))
+            (Intadd1-sub1-idemp (IntPlus (Negative k-1) j))))))))
+
+(claim +-add1-r-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (IntPlus (Positive k) (Intadd1 j))
+       (Intadd1 (IntPlus (Positive k) j)))))
+(define +-add1-r-pos
+  (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (IntPlus (Positive k) (Intadd1 j))
+       (Intadd1 (IntPlus (Positive k) j))))
+      (same (Intadd1 j))
+      (λ (k-1 ans)
+        (cong ans Intadd1)))))
+
+(claim +-add1-r
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer (IntPlus k (Intadd1 j))
+       (Intadd1 (IntPlus k j)))))
+(define +-add1-r
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (IntPlus k (Intadd1 j))
+             (Intadd1 (IntPlus k j)))))
+      +-add1-r-neg
+      +-add1-r-pos)))
+
+
+(claim +-sub1-r-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (IntPlus (Negative k) (Intsub1 j))
+       (Intsub1 (IntPlus (Negative k) j)))))
+(define +-sub1-r-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntPlus (Negative k) (Intsub1 j))
+          (Intsub1 (IntPlus (Negative k) j))))
+      (same (Intsub1 (Intsub1 j)))
+      (λ (k-1 ans)
+        (cong ans Intsub1)))))
+
+(claim +-sub1-r-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (IntPlus (Positive k) (Intsub1 j))
+       (Intsub1 (IntPlus (Positive k) j)))))
+(define +-sub1-r-pos
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntPlus (Positive k) (Intsub1 j))
+          (Intsub1 (IntPlus (Positive k) j))))
+      (same (Intsub1 j))
+      (λ (k-1 ans)
+        (equal Integer
+          (Intadd1 (IntPlus (Positive k-1) (Intsub1 j)))
+          #:by (cong ans Intadd1)
+          (Intadd1 (Intsub1 (IntPlus (Positive k-1) j)))
+          #:by (symm (Intadd1-sub1-idemp (IntPlus (Positive k-1) j)))
+          (IntPlus (Positive k-1) j)
+          #:by (Intsub1-add1-idemp (IntPlus (Positive k-1) j))
+          (Intsub1 (Intadd1 (IntPlus (Positive k-1) j))))))))
+
+
+(claim +-sub1-r
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer (IntPlus k (Intsub1 j))
+       (Intsub1 (IntPlus k j)))))
+(define +-sub1-r
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (IntPlus k (Intsub1 j))
+             (Intsub1 (IntPlus k j)))))
+      +-sub1-r-neg
+      +-sub1-r-pos)))
+
+;; proof that * with -1 on the right is negation
+(claim flip-is-negate
+  (Π ([k Integer])
+    (= Integer (IntTimes k (Negative 0)) (Negate k))))
+(define flip-is-negate
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntTimes k (Negative 0)) (Negate k)))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg) (= Integer (IntTimes (Negative neg) (Negative 0)) (Negate (Negative neg))))
+          (same (Positive 1))
+          (λ (neg-1 IH)
+            (cong IH Intadd1))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos) (= Integer (IntTimes (Positive pos) (Negative 0)) (Negate (Positive pos))))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (equal Integer
+              (Intsub1 (IntTimes (Positive pos-1) (Negative 0)))
+              #:by (cong IH Intsub1)
+              (Intsub1 (Negate (Positive pos-1)))
+              #:by (symm (negate-add1-swap (Positive pos-1)))
+              (Negate (Positive (add1 pos-1))))))))))
+
+;; proof that + is commutative
+
+(claim +-comm-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntPlus (Negative k) j)
+       (IntPlus j (Negative k)))))
+
+(define +-comm-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (IntPlus (Negative k) j) (IntPlus j (Negative k))))
+      (equal Integer
+        (Intsub1 j)
+        #:by (symm (cong (+-zero-r j) Intsub1))
+        (Intsub1 (IntPlus j (Positive 0)))
+        #:by (symm (+-sub1-r j (Positive 0)))
+        (IntPlus j (Negative 0)))
+      (λ (k-1 ans)
+        (equal Integer
+          (Intsub1 (IntPlus (Negative k-1) j))
+          #:by (cong ans Intsub1)
+          (Intsub1 (IntPlus j (Negative k-1)))
+          #:by (symm (+-sub1-r j (Negative k-1)))
+          (IntPlus j (Negative (add1 k-1))))))))
+
+(claim +-comm-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (IntPlus (Positive k) j) (IntPlus j (Positive k)))))
+
+(define +-comm-pos
+  (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (IntPlus (Positive k) j) (IntPlus j (Positive k))))
+      (symm (+-zero-r j))
+      (λ (k-1 ans)
+        (equal Integer
+          (Intadd1 (IntPlus (Positive k-1) j))
+          #:by (cong ans Intadd1)
+          (Intadd1 (IntPlus j (Positive k-1)))
+          #:by (symm (+-add1-r j (Positive k-1)))
+          (IntPlus j (Positive (add1 k-1))))))))
+
+(claim +-comm
+  (is-Comm Integer IntPlus))
+
+(define +-comm
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (IntPlus k j) (IntPlus j k))))
+      +-comm-neg
+      +-comm-pos)))
+
+
+;; alternate proof of inverses using commutativity, easier to use and more powerful
+(claim +-inv-same-negative-1
+  (Π ([k Nat])
+    (= Integer
+       (IntPlus (Positive k) (Negative k))
+       (Negative 0))))
+(define +-inv-same-negative-1
+  (λ (k)
+    (ind-Nat k
+      (λ (k) (= Integer
+               (IntPlus (Positive k) (Negative k))
+               (Negative 0)))
+      (same (Negative 0))
+      (λ (k-1 IH)
+        (equal Integer
+          (Intadd1 (IntPlus (Positive k-1) (Negative (add1 k-1))))
+          #:by (cong (+-comm (Positive k-1) (Negative (add1 k-1))) Intadd1)
+          (Intadd1 (Intsub1 (IntPlus (Negative k-1) (Positive k-1))))
+          #:by (symm (Intadd1-sub1-idemp (IntPlus (Negative k-1) (Positive k-1))))
+          (IntPlus (Negative k-1) (Positive k-1))
+          #:by (+-comm (Negative k-1) (Positive k-1))
+          (IntPlus (Positive k-1) (Negative k-1))
+          #:by IH
+          (Negative 0))))))
+
+(claim +-inv-r-0
+  (Π ([k Integer])
+    (= Integer (IntPlus k (Negate k)) (Positive 0))))
+(define +-inv-r-0
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntPlus k (Negate k)) (Positive 0)))
+      (λ (neg)
+        (equal Integer
+          (IntPlus (Negative neg) (Positive (add1 neg)))
+          #:by (+-comm (Negative neg) (Positive (add1 neg)))
+          (Intadd1 (IntPlus (Positive neg) (Negative neg)))
+          #:by (cong (+-inv-same-negative-1 neg) Intadd1)
+          (Positive 0)))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (p)
+            (= Integer
+              (IntPlus (Positive p) (Negate (Positive p)))
+              (Positive 0)))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (cong (+-inv-same-negative-1 pos-1) Intadd1)))))))
+
+(claim +-inv-l-0
+  (Π ([k Integer])
+    (= Integer (IntPlus (Negate k) k) (Positive 0))))
+(define +-inv-l-0
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntPlus (Negate k) k) (Positive 0)))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k) (= Integer (IntPlus (Negate (Negative k)) (Negative k)) (Positive 0)))
+          (same (Positive 0))
+          (λ (neg-1 _)
+            (cong (+-inv-same-negative-1 (add1 neg-1)) Intadd1))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k) (= Integer (IntPlus (Negate (Positive k)) (Positive k)) (Positive 0)))
+          (same (Positive 0))
+          (λ (pos-1 _)
+            (equal Integer
+              (IntPlus (Negative pos-1) (Positive (add1 pos-1)))
+              #:by (+-comm (Negative pos-1) (Positive (add1 pos-1)))
+              (Intadd1 (IntPlus (Positive pos-1) (Negative pos-1)))
+              #:by (cong (+-inv-same-negative-1 pos-1) Intadd1)
+              (Positive 0))))))))
+
+#;(claim +-has-inverses
+  (has-Inverses Integer IntPlus +-Has-Identity))
+#;(define +-has-inverses
+  (λ (k)
+    (cons (Negate k)
+      (cons (+-inv-r-0 k)
+        (+-inv-l-0 k)))))
+
+;; putting it all together to prove the group property of Integers under +
+#;(claim IntegersFormAGroup
+  (Group Integer IntPlus))
+#;(define IntegersFormAGroup
+  (cons +-assoc
+    (cons +-Has-Identity
+      +-has-inverses)))
+
+;; abelian, too
+#;(claim IntPlusIsAnAbelianGroup
+  (Abelian-Group Integer IntPlus))
+#;(define IntPlusIsAnAbelianGroup
+  (cons IntegersFormAGroup
+    +-comm))
+
+;; proof that + and Negate distribute
+(claim negate-plus-dist
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntPlus k j)
+       (Negate (IntPlus (Negate k) (Negate j))))))
+(define negate-plus-dist
+  (λ (k j)
+    (ind-Either k
+      (λ (k)
+        (= Integer
+          (IntPlus k j)
+          (Negate (IntPlus (Negate k) (Negate j)))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg)
+            (= Integer
+              (IntPlus (Negative neg) j)
+              (Negate (IntPlus (Negate (Negative neg)) (Negate j)))))
+          (equal Integer
+            (Intsub1 j)
+            #:by (symm (neg-neg-idemp (Intsub1 j)))
+            (Negate (Negate (Intsub1 j)))
+            #:by (cong (negate-sub1-swap j) Negate)
+            (Negate (Intadd1 (Negate j))))
+          (λ (neg-1 IH)
+            (equal Integer
+              (Intsub1 (IntPlus (Negative neg-1) j))
+              #:by (cong IH Intsub1)
+              (Intsub1 (Negate (IntPlus (Negate (Negative neg-1)) (Negate j))))
+              #:by (symm (negate-add1-swap (IntPlus (Negate (Negative neg-1)) (Negate j))))
+              (Negate (Intadd1 (IntPlus (Negate (Negative neg-1)) (Negate j))))
+              #:by (cong
+                     (symm (negate-sub1-swap (Negative neg-1)))
+                     (the (-> Integer Integer)
+                           (λ (k) (Negate (IntPlus k (Negate j))))))
+              (Negate (IntPlus (Negate (Intsub1 (Negative neg-1))) (Negate j)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos)
+            (= Integer
+              (IntPlus (Positive pos) j)
+              (Negate (IntPlus (Negate (Positive pos)) (Negate j)))))
+          (symm (neg-neg-idemp j))
+          (λ (pos-1 IH)
+            (equal Integer
+              (Intadd1 (IntPlus (Positive pos-1) j))
+              #:by (cong IH Intadd1)
+              (Intadd1 (Negate (IntPlus (Negate (Positive pos-1)) (Negate j))))
+              #:by (symm (negate-sub1-swap (IntPlus (Negate (Positive pos-1)) (Negate j))))
+              (Negate (Intsub1 (IntPlus (Negate (Positive pos-1)) (Negate j))))
+              #:by (symm (cong (+-sub1-l (Negate (Positive pos-1)) (Negate j)) Negate))
+              (Negate (IntPlus (Intsub1 (Negate (Positive pos-1))) (Negate j)))
+              #:by (cong (symm (negate-add1-swap (Positive pos-1)))
+                     (the (-> Integer Integer)
+                       (λ (k)
+                         (Negate (IntPlus k (Negate j))))))
+              (Negate (IntPlus (Negative pos-1) (Negate j))))))))))
+
+
+;; proof that multiplication has 1 as an identity
+
+(claim *-1-id-l
+  (Π ([k Integer])
+    (= Integer (IntTimes (Positive 1) k) k)))
+
+(define *-1-id-l
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntTimes (Positive 1) k) k))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k)
+            (= Integer
+              (IntTimes (Positive 1) (Negative k))
+              (Negative k)))
+          (same (Negative 0))
+          (λ (neg-1 ans)
+            (cong ans (IntPlus (Negative 0))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k)
+            (= Integer
+              (IntTimes (Positive 1) (Positive k))
+              (Positive k)))
+          (same (Positive 0))
+          (λ (pos-1 ans)
+            (cong ans (IntPlus (Positive 1)))))))))
+
+(claim *-1-id-r
+  (Π ([k Integer])
+    (= Integer (IntTimes k (Positive 1)) k)))
+(define *-1-id-r
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntTimes k (Positive 1)) k))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (n) (= Integer (IntTimes (Negative n) (Positive 1)) (Negative n)))
+          (same (Negative 0))
+          (λ (n-1 IH)
+            (cong IH (IntPlus (Negate (Positive 1)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (p) (= Integer (IntTimes (Positive p) (Positive 1)) (Positive p)))
+          (same (Positive 0))
+          (λ (n-1 IH)
+            (cong IH (IntPlus (Positive 1)))))))))
+
+(claim *-has-identity
+  (has-Identity Integer IntTimes))
+(define *-has-identity
+ (cons (Positive 1)
+   (λ (k)
+     (cons (*-1-id-l k)
+       (*-1-id-r k)))))
+
+;; proof that * and add1, sub1 distribute on left and right
+
+
+(claim *-sub1-dist-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntTimes (Intsub1 k) j)
+       (IntPlus (Negate j) (IntTimes k j)))))
+(define *-sub1-dist-l
+  (λ (k j)
+    (ind-Either k
+      (λ (k)
+        (= Integer
+          (IntTimes (Intsub1 k) j)
+          (IntPlus (Negate j) (IntTimes k j))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k)
+            (= Integer
+              (IntTimes (Intsub1 (Negative k)) j)
+              (IntPlus (Negate j) (IntTimes (Negative k) j))))
+          (same (IntTimes (Negative 1) j))
+          (λ (neg-1 IH)
+            (same (IntPlus (Negate j) (IntPlus (Negate j) (IntTimes (Negative neg-1) j)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k)
+            (= Integer
+              (IntTimes (Intsub1 (Positive k)) j)
+              (IntPlus (Negate j) (IntTimes (Positive k) j))))
+          (symm (+-zero-r (Negate j)))
+          (λ (pos-1 IH)
+            (equal Integer
+              (IntTimes (Intsub1 (Positive (add1 pos-1))) j)
+              #:by (cong (Intsub1-add1-idemp (Positive pos-1))
+                     (the (-> Integer Integer)
+                       (λ (k) (IntTimes k j))))
+              (IntTimes (Positive pos-1) j)
+              #:by (cong (symm (+-inv-l-0 j)) (the (-> Integer Integer) (λ (k) (IntPlus k (IntTimes (Positive pos-1) j)))))
+              (IntPlus (IntPlus (Negate j) j) (IntTimes (Positive pos-1) j))
+              #:by (symm (+-assoc (Negate j) j (IntTimes (Positive pos-1) j)))
+              (IntPlus (Negate j) (IntPlus j (IntTimes (Positive pos-1) j))))))))))
+
+(claim *-sub1-dist-r
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntTimes k (Intsub1 j))
+       (IntPlus (Negate k) (IntTimes k j)))))
+(define *-sub1-dist-r
+  (λ (k j)
+    (ind-Either k
+      (λ (k)
+        (= Integer
+          (IntTimes k (Intsub1 j))
+          (IntPlus (Negate k) (IntTimes k j))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k)
+            (= Integer
+              (IntTimes (Negative k) (Intsub1 j))
+              (IntPlus (Negate (Negative k)) (IntTimes (Negative k) j))))
+          (negate-sub1-swap j)
+          (λ (neg-1 IH)
+            (equal Integer
+              (IntPlus (Negate (Intsub1 j)) (IntTimes (Negative neg-1) (Intsub1 j)))
+              #:by (cong IH (IntPlus (Negate (Intsub1 j))))
+              (IntPlus (Negate (Intsub1 j)) (IntPlus (Negate (Negative neg-1)) (IntTimes (Negative neg-1) j)))
+              #:by (+-assoc (Negate (Intsub1 j)) (Negate (Negative neg-1)) (IntTimes (Negative neg-1) j))
+              (IntPlus (IntPlus (Negate (Intsub1 j)) (Positive (add1 neg-1))) (IntTimes (Negative neg-1) j))
+              #:by (cong (negate-sub1-swap j)
+                     (the (-> Integer Integer)
+                       (λ (?)
+                         (IntPlus
+                           (IntPlus ? (Positive (add1 neg-1)))
+                           (IntTimes (Negative neg-1) j)))))
+              (IntPlus (IntPlus (Intadd1 (Negate j)) (Positive (add1 neg-1))) (IntTimes (Negative neg-1) j))
+              #:by (cong (+-add1-l (Negate j) (Positive (add1 neg-1)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntTimes (Negative neg-1) j)))))
+              (IntPlus (Intadd1 (IntPlus (Negate j) (Positive (add1 neg-1)))) (IntTimes (Negative neg-1) j))
+              #:by (cong (+-comm (Negate j) (Positive (add1 neg-1)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus (Intadd1 ?) (IntTimes (Negative neg-1) j)))))
+              (IntPlus (Intadd1 (IntPlus (Positive (add1 neg-1)) (Negate j))) (IntTimes (Negative neg-1) j))
+              #:by (cong (symm (+-add1-l (Positive (add1 neg-1)) (Negate j)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntTimes (Negative neg-1) j)))))
+              (IntPlus (IntPlus (Positive (add1 (add1 neg-1))) (Negate j)) (IntTimes (Negative neg-1) j))
+              #:by (symm (+-assoc (Positive (add1 (add1 neg-1))) (Negate j) (IntTimes (Negative neg-1) j)))
+              (IntPlus (Positive (add1 (add1 neg-1))) (IntPlus (Negate j) (IntTimes (Negative neg-1) j)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k)
+            (= Integer
+              (IntTimes (Positive k) (Intsub1 j))
+              (IntPlus (Negate (Positive k)) (IntTimes (Positive k) j))))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (equal Integer
+              (IntPlus (Intsub1 j) (IntTimes (Positive pos-1) (Intsub1 j)))
+              #:by (cong IH (IntPlus (Intsub1 j)))
+              (IntPlus (Intsub1 j) (IntPlus (Negate (Positive pos-1)) (IntTimes (Positive pos-1) j)))
+              #:by (+-assoc (Intsub1 j) (Negate (Positive pos-1)) (IntTimes (Positive pos-1) j))
+              (IntPlus (IntPlus (Intsub1 j) (Negate (Positive pos-1))) (IntTimes (Positive pos-1) j))
+              #:by (cong (+-sub1-l j (Negate (Positive pos-1)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntTimes (Positive pos-1) j)))))
+              (IntPlus (Intsub1 (IntPlus j (Negate (Positive pos-1)))) (IntTimes (Positive pos-1) j))
+              #:by (cong (+-comm j (Negate (Positive pos-1)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus (Intsub1 ?) (IntTimes (Positive pos-1) j)))))
+              (IntPlus (Intsub1 (IntPlus (Negate (Positive pos-1)) j)) (IntTimes (Positive pos-1) j))
+              #:by (cong (symm (+-sub1-l (Negate (Positive pos-1)) j))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntTimes (Positive pos-1) j)))))
+              (IntPlus (IntPlus (Intsub1 (Negate (Positive pos-1))) j) (IntTimes (Positive pos-1) j))
+              #:by (cong (symm (negate-add1-swap (Positive pos-1)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus (IntPlus ? j) (IntTimes (Positive pos-1) j)))))
+              (IntPlus (IntPlus (Negative pos-1) j) (IntTimes (Positive pos-1) j))
+              #:by (symm (+-assoc (Negative pos-1) j (IntTimes (Positive pos-1) j)))
+              (IntPlus (Negative pos-1) (IntPlus j (IntTimes (Positive pos-1) j))))))))))
+
+(claim *-add1-dist-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntTimes (Intadd1 k) j)
+       (IntPlus j (IntTimes k j)))))
+
+
+#|
+(k+1)*j=j+(k*j)
+|#
+(define *-add1-dist-l
+  (λ (k j)
+    (ind-Either k
+      (λ (k)
+        (= Integer
+          (IntTimes (Intadd1 k) j)
+          (IntPlus j (IntTimes k j))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k)
+            (= Integer
+              (IntTimes (Intadd1 (Negative k)) j)
+              (IntPlus j (IntTimes (Negative k) j))))
+          (symm (+-inv-r-0 j))
+          (λ (neg-1 IH)
+            (equal Integer
+              (IntTimes (Negative neg-1) j)
+              #:by (cong (symm (+-inv-r-0 j)) (the (-> Integer Integer) (λ (k) (IntPlus k (IntTimes (Negative neg-1) j)))))
+              (IntPlus (IntPlus j (Negate j)) (IntTimes (Negative neg-1) j))
+              #:by (symm (+-assoc j (Negate j) (IntTimes (Negative neg-1) j)))
+              (IntPlus j (IntPlus (Negate j) (IntTimes (Negative neg-1) j)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k)
+            (= Integer
+              (IntTimes (Intadd1 (Positive k)) j)
+              (IntPlus j (IntTimes (Positive k) j))))
+          (same (IntPlus j (Positive 0)))
+          (λ (pos-1 IH)
+            (same (IntPlus j (IntPlus j (IntTimes (Positive pos-1) j))))))))))
+
+(claim *-add1-dist-r
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (IntTimes k (Intadd1 j))
+       (IntPlus k (IntTimes k j)))))
+(define *-add1-dist-r
+  (λ (k j)
+    (ind-Either k
+      (λ (k)
+        (= Integer
+          (IntTimes k (Intadd1 j))
+          (IntPlus k (IntTimes k j))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k)
+            (= Integer
+              (IntTimes (Negative k) (Intadd1 j))
+              (IntPlus (Negative k) (IntTimes (Negative k) j))))
+          (negate-add1-swap j)
+          (λ (neg-1 IH)
+            (equal Integer
+              (IntPlus (Negate (Intadd1 j)) (IntTimes (Negative neg-1) (Intadd1 j)))
+              #:by (cong IH (IntPlus (Negate (Intadd1 j))))
+              (IntPlus (Negate (Intadd1 j)) (IntPlus (Negative neg-1) (IntTimes (Negative neg-1) j)))
+              #:by (cong (negate-add1-swap j)
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntPlus (Negative neg-1) (IntTimes (Negative neg-1) j))))))
+              (IntPlus (Intsub1 (Negate j)) (IntPlus (Negative neg-1) (IntTimes (Negative neg-1) j)))
+              #:by (+-assoc (Intsub1 (Negate j)) (Negative neg-1) (IntTimes (Negative neg-1) j))
+              (IntPlus (IntPlus (Intsub1 (Negate j)) (Negative neg-1)) (IntTimes (Negative neg-1) j))
+              #:by (cong (+-sub1-l (Negate j) (Negative neg-1))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntTimes (Negative neg-1) j)))))
+              (IntPlus (Intsub1 (IntPlus (Negate j) (Negative neg-1))) (IntTimes (Negative neg-1) j))
+              #:by (cong (+-comm (Negate j) (Negative neg-1))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus (Intsub1 ?) (IntTimes (Negative neg-1) j)))))
+              (IntPlus (Intsub1 (IntPlus (Negative neg-1) (Negate j))) (IntTimes (Negative neg-1) j))
+              #:by (symm (+-assoc (Negative (add1 neg-1)) (Negate j) (IntTimes (Negative neg-1) j)))
+              (IntPlus (Negative (add1 neg-1)) (IntPlus (Negate j) (IntTimes (Negative neg-1) j)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k)
+            (= Integer
+              (IntTimes (Positive k) (Intadd1 j))
+              (IntPlus (Positive k) (IntTimes (Positive k) j))))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (equal Integer
+              (IntPlus (Intadd1 j) (IntTimes (Positive pos-1) (Intadd1 j)))
+              #:by (cong IH (IntPlus (Intadd1 j)))
+              (IntPlus (Intadd1 j) (IntPlus (Positive pos-1) (IntTimes (Positive pos-1) j)))
+              #:by (+-add1-l j (IntPlus (Positive pos-1) (IntTimes (Positive pos-1) j)))
+              (Intadd1 (IntPlus j (IntPlus (Positive pos-1) (IntTimes (Positive pos-1) j))))
+              #:by (cong (+-assoc j (Positive pos-1) (IntTimes (Positive pos-1) j)) Intadd1)
+              (Intadd1 (IntPlus (IntPlus j (Positive pos-1)) (IntTimes (Positive pos-1) j)))
+              #:by (cong (+-comm j (Positive pos-1))
+                     (the (-> Integer Integer)
+                       (λ (?) (Intadd1 (IntPlus ? (IntTimes (Positive pos-1) j))))))
+              (Intadd1 (IntPlus (IntPlus (Positive pos-1) j) (IntTimes (Positive pos-1) j)))
+              #:by (cong (symm (+-assoc (Positive pos-1) j (IntTimes (Positive pos-1) j))) Intadd1)
+              (Intadd1 (IntPlus (Positive pos-1) (IntPlus j (IntTimes (Positive pos-1) j)))))))))))
+
+
+;; proof that k * 0 = 0
+
+(claim *-0-l
+  (Π ([k Integer])
+    (= Integer (IntTimes (Positive 0) k) (Positive 0))))
+(define *-0-l
+  (λ (k)
+    (same (Positive 0))))
+
+(claim *-0-r
+  (Π ([k Integer])
+    (= Integer (IntTimes k (Positive 0)) (Positive 0))))
+(define *-0-r
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntTimes k (Positive 0)) (Positive 0)))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg) (= Integer (IntTimes (Negative neg) (Positive 0)) (Positive 0)))
+          (same (Positive 0))
+          (λ (neg-1 IH)
+            (cong IH (IntPlus (Positive 0))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos) (= Integer (IntTimes (Positive pos) (Positive 0)) (Positive 0)))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (cong IH (IntPlus (Positive 0)))))))))
+;; proof that *  distributes
+
+(claim *-dist-l
+  (Π ([k Integer]
+      [j Integer]
+      [l Integer])
+    (= Integer (IntTimes (IntPlus k j) l)
+       (IntPlus (IntTimes k l) (IntTimes j l)))))
+(define *-dist-l
+  (λ (k j l)
+    (ind-Either k
+      (λ (k)
+        (= Integer (IntTimes (IntPlus k j) l)
+          (IntPlus (IntTimes k l) (IntTimes j l))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (n)
+            (= Integer (IntTimes (IntPlus (Negative n) j) l)
+              (IntPlus (IntTimes (Negative n) l) (IntTimes j l))))
+          (*-sub1-dist-l j l)
+          (λ (neg-1 IH)
+            (equal Integer
+              (IntTimes (IntPlus (Intsub1 (Negative neg-1)) j) l)
+              #:by (cong (+-sub1-l (Negative neg-1) j) (the (-> Integer Integer) (λ (k) (IntTimes k l))))
+              (IntTimes (Intsub1 (IntPlus (Negative neg-1) j)) l)
+              #:by (*-sub1-dist-l (IntPlus (Negative neg-1) j) l)
+              (IntPlus (Negate l) (IntTimes (IntPlus (Negative neg-1) j) l))
+              #:by (cong IH (IntPlus (Negate l)))
+              (IntPlus (Negate l) (IntPlus (IntTimes (Negative neg-1) l) (IntTimes j l)))
+              #:by (+-assoc (Negate l) (IntTimes (Negative neg-1) l) (IntTimes j l))
+              (IntPlus (IntPlus (Negate l) (IntTimes (Negative neg-1) l)) (IntTimes j l))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (n)
+            (= Integer (IntTimes (IntPlus (Positive n) j) l)
+              (IntPlus (IntTimes (Positive n) l) (IntTimes j l))))
+          (same (IntTimes j l)) 
+          (λ (pos-1 IH)
+            (equal Integer
+              (IntTimes (Intadd1 (IntPlus (Positive pos-1) j)) l)
+              #:by (*-add1-dist-l (IntPlus (Positive pos-1) j) l)
+              (IntPlus l (IntTimes (IntPlus (Positive pos-1) j) l))
+              #:by (cong IH (IntPlus l))
+              (IntPlus l (IntPlus (IntTimes (Positive pos-1) l) (IntTimes j l)))
+              #:by (+-assoc l (IntTimes (Positive pos-1) l) (IntTimes j l))
+              (IntPlus (IntPlus l (IntTimes (Positive pos-1) l)) (IntTimes j l)))))))))
+
+(claim *-dist-r
+  (Π ([k Integer]
+      [j Integer]
+      [l Integer])
+    (= Integer (IntTimes k (IntPlus j l))
+       (IntPlus (IntTimes k j) (IntTimes k l)))))
+(define *-dist-r
+  (λ (k j l)
+    (ind-Either k
+      (λ (k)
+        (= Integer (IntTimes k (IntPlus j l))
+          (IntPlus (IntTimes k j) (IntTimes k l))))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg)
+            (= Integer (IntTimes (Negative neg) (IntPlus j l))
+              (IntPlus (IntTimes (Negative neg) j) (IntTimes (Negative neg) l))))
+          (equal Integer
+            (Negate (IntPlus j l))
+            #:by (cong (symm (neg-neg-idemp j)) (the (-> Integer Integer) (λ (k) (Negate (IntPlus k l)))))
+            (Negate (IntPlus (Negate (Negate j)) l))
+            #:by (cong (symm (neg-neg-idemp l)) (the (-> Integer Integer) (λ (k) (Negate (IntPlus (Negate (Negate j)) k)))))
+            (Negate (IntPlus (Negate (Negate j)) (Negate (Negate l))))
+            #:by (symm (negate-plus-dist (Negate j) (Negate l)))
+            (IntPlus (Negate j) (Negate l)))
+          (λ (neg-1 IH)
+            (equal Integer
+              (IntPlus (Negate (IntPlus j l)) (IntTimes (Negative neg-1) (IntPlus j l)))
+              #:by (cong (negate-plus-dist j l)
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus (Negate ?) (IntTimes (Negative neg-1) (IntPlus j l))))))
+              (IntPlus (Negate (Negate (IntPlus (Negate j) (Negate l)))) (IntTimes (Negative neg-1) (IntPlus j l)))
+              #:by (cong (neg-neg-idemp (IntPlus (Negate j) (Negate l)))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus ? (IntTimes (Negative neg-1) (IntPlus j l))))))
+              (IntPlus (IntPlus (Negate j) (Negate l)) (IntTimes (Negative neg-1) (IntPlus j l)))
+              #:by (cong IH (IntPlus (IntPlus (Negate j) (Negate l))))
+              (IntPlus (IntPlus (Negate j) (Negate l)) (IntPlus (IntTimes (Negative neg-1) j) (IntTimes (Negative neg-1) l)))
+              #:by (symm (+-assoc (Negate j) (Negate l) (IntPlus (IntTimes (Negative neg-1) j) (IntTimes (Negative neg-1) l))))
+              (IntPlus (Negate j) (IntPlus (Negate l) (IntPlus (IntTimes (Negative neg-1) j) (IntTimes (Negative neg-1) l))))
+              #:by (cong (+-assoc (Negate l) (IntTimes (Negative neg-1) j) (IntTimes (Negative neg-1) l))
+                     (IntPlus (Negate j)))
+              (IntPlus (Negate j) (IntPlus (IntPlus (Negate l) (IntTimes (Negative neg-1) j)) (IntTimes (Negative neg-1) l)))
+              #:by (cong (+-comm (Negate l) (IntTimes (Negative neg-1) j))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus (Negate j) (IntPlus ? (IntTimes (Negative neg-1) l))))))
+              (IntPlus (Negate j) (IntPlus (IntPlus (IntTimes (Negative neg-1) j) (Negate l)) (IntTimes (Negative neg-1) l)))
+              #:by (cong (symm (+-assoc (IntTimes (Negative neg-1) j) (Negate l) (IntTimes (Negative neg-1) l)))
+                     (IntPlus (Negate j)))
+              (IntPlus (Negate j) (IntPlus (IntTimes (Negative neg-1) j) (IntPlus (Negate l) (IntTimes (Negative neg-1) l))))
+              #:by (+-assoc (Negate j) (IntTimes (Negative neg-1) j) (IntPlus (Negate l) (IntTimes (Negative neg-1) l)))
+              (IntPlus (IntPlus (Negate j) (IntTimes (Negative neg-1) j)) (IntPlus (Negate l) (IntTimes (Negative neg-1) l)))))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos)
+            (= Integer (IntTimes (Positive pos) (IntPlus j l))
+              (IntPlus (IntTimes (Positive pos) j) (IntTimes (Positive pos) l))))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (equal Integer
+              (IntPlus (IntPlus j l) (IntTimes (Positive pos-1) (IntPlus j l)))
+              #:by (cong IH (IntPlus (IntPlus j l)))
+              (IntPlus (IntPlus j l) (IntPlus (IntTimes (Positive pos-1) j) (IntTimes (Positive pos-1) l)))
+              #:by (symm (+-assoc j l (IntPlus (IntTimes (Positive pos-1) j) (IntTimes (Positive pos-1) l))))
+              (IntPlus j (IntPlus l (IntPlus (IntTimes (Positive pos-1) j) (IntTimes (Positive pos-1) l))))
+              #:by (cong (+-assoc l (IntTimes (Positive pos-1) j) (IntTimes (Positive pos-1) l)) (IntPlus j))
+              (IntPlus j (IntPlus (IntPlus l (IntTimes (Positive pos-1) j)) (IntTimes (Positive pos-1) l)))
+              #:by (cong (+-comm l (IntTimes (Positive pos-1) j))
+                     (the (-> Integer Integer)
+                       (λ (?) (IntPlus j (IntPlus ? (IntTimes (Positive pos-1) l))))))
+              (IntPlus j (IntPlus (IntPlus (IntTimes (Positive pos-1) j) l) (IntTimes (Positive pos-1) l)))
+              #:by (cong (symm (+-assoc (IntTimes (Positive pos-1) j) l (IntTimes (Positive pos-1) l))) (IntPlus j))
+              (IntPlus j (IntPlus (IntTimes (Positive pos-1) j) (IntPlus l (IntTimes (Positive pos-1) l))))
+              #:by (+-assoc j (IntTimes (Positive pos-1) j) (IntPlus l (IntTimes (Positive pos-1) l)))
+              (IntPlus (IntPlus j (IntTimes (Positive pos-1) j)) (IntPlus l (IntTimes (Positive pos-1) l))))))))))
+
+;; proof that * and Negate are commutative under composition
+
+(claim Negate-Times-comp-l-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (IntTimes (Negate (Negative k)) j)
+       (Negate (IntTimes (Negative k) j)))))
+(define Negate-Times-comp-l-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntTimes (Negate (Negative k)) j)
+          (Negate (IntTimes (Negative k) j))))
+      (trans (*-1-id-l j)
+        (symm (neg-neg-idemp j)))
+      (λ (k-1 ans)
+        (equal Integer
+          (IntPlus j (IntTimes (Negate (Negative k-1)) j))
+          #:by (cong ans (IntPlus j))
+          (IntPlus j (Negate (IntTimes (Negative k-1) j)))
+          #:by (negate-plus-dist j (Negate (IntTimes (Negative k-1) j)))
+          (Negate (IntPlus (Negate j) (Negate (Negate (IntTimes (Negative k-1) j)))))
+          #:by (cong (neg-neg-idemp (IntTimes (Negative k-1) j))
+                 (the (-> Integer Integer)
+                   (λ (x) (Negate (IntPlus (Negate j) x)))))
+          (Negate (IntPlus (Negate j) (IntTimes (Negative k-1) j))))))))
+
+(claim Negate-Times-comp-l-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntTimes (Negate (Positive k)) j)
+       (Negate (IntTimes (Positive k) j)))))
+(define Negate-Times-comp-l-pos
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntTimes (Negate (Positive k)) j)
+          (Negate (IntTimes (Positive k) j))))
+      (same (Positive 0))
+      (λ (k-1 IH)
+        (equal Integer
+          (IntTimes (Negate (Positive (add1 k-1))) j)
+          #:by (cong (negate-add1-swap (Positive k-1))
+                 (the (-> Integer Integer) (λ (k) (IntTimes k j))))
+          (IntTimes (Intsub1 (Negate (Positive k-1))) j)
+          #:by (*-sub1-dist-l (Negate (Positive k-1)) j)
+          (IntPlus (Negate j) (IntTimes (Negate (Positive k-1)) j))
+          #:by (cong IH (IntPlus (Negate j)))
+          (IntPlus (Negate j) (Negate (IntTimes (Positive k-1) j)))
+          #:by (negate-plus-dist (Negate j) (Negate (IntTimes (Positive k-1) j)))
+          (Negate (IntPlus (Negate (Negate j)) (Negate (Negate (IntTimes (Positive k-1) j)))))
+          #:by (cong (neg-neg-idemp j)
+                 (the (-> Integer Integer)
+                   (λ (?) (Negate (IntPlus ? (Negate (Negate (IntTimes (Positive k-1) j))))))))
+          (Negate (IntPlus j (Negate (Negate (IntTimes (Positive k-1) j)))))
+          #:by (cong (neg-neg-idemp (IntTimes (Positive k-1) j))
+                 (the (-> Integer Integer)
+                   (λ (?) (Negate (IntPlus j ?)))))
+          (Negate (IntPlus j (IntTimes (Positive k-1) j))))))))
+
+(claim Negate-Times-comp-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer (IntTimes (Negate k) j)
+       (Negate (IntTimes k j)))))
+(define Negate-Times-comp-l
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (IntTimes (Negate k) j)
+             (Negate (IntTimes k j)))))
+      Negate-Times-comp-l-neg
+      Negate-Times-comp-l-pos)))
+
+;; proof that * is assoc
+
+(claim *-assoc-neg
+  (Π ([k Nat]
+      [j Integer]
+      [l Integer])
+    (= Integer
+       (IntTimes (Negative k) (IntTimes j l))
+       (IntTimes (IntTimes (Negative k) j) l))))
+
+(define *-assoc-neg
+  (λ (k j l)
+    (ind-Nat k
+      (λ (k)
+        (= Integer
+          (IntTimes (Negative k) (IntTimes j l))
+          (IntTimes (IntTimes (Negative k) j) l)))
+      (symm (Negate-Times-comp-l j l))
+      (λ (k-1 IH)
+        (equal Integer
+          (IntPlus (Negate (IntTimes j l)) (IntTimes (Negative k-1) (IntTimes j l)))
+          #:by (cong (symm (Negate-Times-comp-l j l))
+                 (the (-> Integer Integer) (λ (?) (IntPlus ? (IntTimes (Negative k-1) (IntTimes j l))))))
+          (IntPlus (IntTimes (Negate j) l) (IntTimes (Negative k-1) (IntTimes j l)))
+          #:by (cong IH (IntPlus (IntTimes (Negate j) l)))
+          (IntPlus (IntTimes (Negate j) l) (IntTimes (IntTimes (Negative k-1) j) l))
+          #:by (symm (*-dist-l (Negate j) (IntTimes (Negative k-1) j) l))
+          (IntTimes (IntPlus (Negate j) (IntTimes (Negative k-1) j)) l))))))
+
+(claim *-assoc-pos
+  (Π ([k Nat]
+      [j Integer]
+      [l Integer])
+    (= Integer
+       (IntTimes (Positive k) (IntTimes j l))
+       (IntTimes (IntTimes (Positive k) j) l))))
+(define *-assoc-pos
+  (λ (k j l)
+    (ind-Nat k
+      (λ (k)
+        (= Integer
+          (IntTimes (Positive k) (IntTimes j l))
+          (IntTimes (IntTimes (Positive k) j) l)))
+      (same (Positive 0))
+      (λ (k-1 IH)
+        (equal Integer
+          (IntPlus (IntTimes j l) (IntTimes (Positive k-1) (IntTimes j l)))
+          #:by (cong IH (IntPlus (IntTimes j l)))
+          (IntPlus (IntTimes j l) (IntTimes (IntTimes (Positive k-1) j) l))
+          #:by (symm (*-dist-l j (IntTimes (Positive k-1) j) l))
+          (IntTimes (IntPlus j (IntTimes (Positive k-1) j)) l))))))
+
+(claim *-assoc
+  (is-Assoc Integer IntTimes))
+(define *-assoc
+  (λ (k)
+    (ind-Either k
+      (λ (k) (Π ([j Integer]
+                 [l Integer])
+               (= Integer
+                  (IntTimes k (IntTimes j l))
+                  (IntTimes (IntTimes k j) l))))
+      *-assoc-neg
+      *-assoc-pos)))
+
+;; proof that * is commutative
+
+(claim *-comm-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntTimes (Negative k) j)
+       (IntTimes j (Negative k)))))
+(define *-comm-neg
+  (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer
+               (IntTimes (Negative k) j)
+               (IntTimes j (Negative k))))
+      (equal Integer
+        (IntTimes (Negative 0) j)
+        #:by (symm (flip-is-negate j))
+        (IntTimes j (Negative 0)))
+      (λ (k-1 IH)
+        (equal Integer
+          (IntTimes (Negative (add1 k-1)) j)
+          #:by (cong IH (IntPlus (Negate j)))
+          (IntPlus (Negate j) (IntTimes j (Negative k-1)))
+          #:by (symm (*-sub1-dist-r j (Negative k-1)))
+          (IntTimes j (Negative (add1 k-1))))))))
+
+(claim *-comm-pos
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer
+       (IntTimes (Positive k) j)
+       (IntTimes j (Positive k)))))
+(define *-comm-pos
+  (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer
+               (IntTimes (Positive k) j)
+               (IntTimes j (Positive k))))
+      (symm (*-0-r j))
+      (λ (k-1 IH)
+        (equal Integer
+          (IntPlus j (IntTimes (Positive k-1) j))
+          #:by (cong IH (IntPlus j))
+          (IntPlus j (IntTimes j (Positive k-1)))
+          #:by (symm (*-add1-dist-r j (Positive k-1)))
+          (IntTimes j (Positive (add1 k-1))))))))
+
+(claim *-comm
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer (IntTimes k j) (IntTimes j k))))
+(define *-comm
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (IntTimes k j) (IntTimes j k))))
+      *-comm-neg
+      *-comm-pos)))
+
+#;
+(claim Integers-Form-A-Ring
+  (Ring Integer IntPlus IntTimes))
+#;(define Integers-Form-A-Ring
+  (cons IntPlusIsAnAbelianGroup
+    (cons *-assoc
+      (cons *-dist-l
+        *-dist-r))))
+#;
+(claim Integers-Form-A-Ring-With-Unit-Element
+  (Ring-With-Unit-Element Integer IntPlus IntTimes))
+#;(define Integers-Form-A-Ring-With-Unit-Element
+  (cons Integers-Form-A-Ring
+    (cons (Positive 1)
+      (λ (k)
+        (cons (*-1-id-l k)
+          (*-1-id-r k))))))
+
+#;(claim Integers-Form-A-Commutative-Ring
+  (Commutative-Ring Integer IntPlus IntTimes))
+#;(define Integers-Form-A-Commutative-Ring
+  (cons Integers-Form-A-Ring
+    *-comm))
+
+#|
+(claim No-Proper-Divisors
+  (Π ([S U])
+    (-> (-> S S S) S U)))
+(define No-Proper-Divisors
+  (λ (S * z)
+    (Π ([x S]
+        [y S])
+      (-> (= S (* x y) z)
+          (Either (= S x z) (= S y z))))))
+|#
+
+#|table describing Int=-conseq
+
+                  Nj+1    N0    P0     Pj+1
+(Negative k+1)   Nk=Nj  Absurd Absurd  Absurd
+(Negative 0)    Absurd  Trivial
+(Positive 0)    Absurd         Trivial
+(Positive k+1)  Absurd                  Pk=Pj
+|#
+
+;; Proof that the multiplication of two non-zero positives is a non-zero positive
+(claim Pk+1*Pj+1=Pn+1
+  (Π ([k Nat]
+      [j Nat])
+    (Σ ([n Nat])
+       (= Integer (IntTimes (Positive (add1 k)) (Positive (add1 j)))
+          (Positive (add1 n))))))
+(define Pk+1*Pj+1=Pn+1
+  TODO)
+;; Proof the the multiplication of two negatives is a non-zero positive
+(claim Nk*Nj=Pn+1
+  (Π ([k Nat]
+      [j Nat])
+    (Σ ([n Nat])
+       (= Integer (IntTimes (Negative k) (Negative j))
+          (Positive (add1 n))))))
+(define Nk*Nj=Pn+1
+  TODO)
+;; Proof that the multiplication of a non-zero positive and a negative is a negative
+(claim Pk+1*Nj=Pn+1
+  (Π ([k Nat]
+      [j Nat])
+    (Σ ([n Nat])
+       (= Integer (IntTimes (Positive (add1 k)) (Negative j))
+          (Negative n)))))
+(define Pk+1*Nj=Pn+1
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (Σ ([n Nat])
+          (= Integer (IntTimes (Positive (add1 k)) (Negative j))
+             (Negative n))))
+      (cons j (*-1-id-l (Negative j)))
+      (λ (k-1 IH)
+        TODO))))
+
+(claim Posk+1*Negj=0->Absurd
+  (Π ([k Nat]
+      [j Nat])
+    (-> (= Integer (IntTimes (Positive (add1 k)) (Negative j)) (Positive 0))
+        Absurd)))
+(define Posk+1*Negj=0->Absurd
+  (λ (k j)
+    TODO))
+
+(claim Posk+1*Posj+1=0->Absurd
+  (Π ([k Nat]
+      [j Nat])
+    (-> (= Integer (IntTimes (Positive (add1 k)) (Positive (add1 j))) (Positive 0))
+        Absurd)))
+(define Posk+1*Posj+1=0->Absurd
+  (λ (k j)
+    TODO))
+
+(claim Negk*Negj=0->Absurd
+  (Π ([k Nat]
+      [j Nat])
+    (-> (= Integer (IntTimes (Negative k) (Negative j)) (Positive 0))
+        Absurd)))
+(define Negk*Negj=0->Absurd
+  (λ (k j)
+    TODO))
+
+(claim Neg*x=0->x=0
+  (Π ([k Nat]
+      [x Integer])
+    (-> (= Integer (IntTimes (Negative k) x) (Positive 0))
+        (Either
+          (= Integer (Negative k) (Positive 0))
+          (= Integer x (Positive 0))))))
+
+(define Neg*x=0->x=0
+  (λ (k)
+    (ind-Nat k
+      (λ (k)
+        (Π ([x Integer])
+          (-> (= Integer (IntTimes (Negative k) x) (Positive 0))
+            (Either
+              (= Integer (Negative k) (Positive 0))
+              (= Integer x (Positive 0))))))
+      (λ (x -1*x=0)
+        TODO)
+      (λ (k-1 IH x)
+        (ind-Either x
+          (λ (x)
+            (-> (= Integer (IntTimes (Negative (add1 k-1)) x) (Positive 0))
+              (Either
+                (= Integer (Negative (add1 k-1)) (Positive 0))
+                (= Integer x (Positive 0)))))
+          (λ (neg pf)
+            (ind-Absurd (Negk*Negj=0->Absurd (add1 k-1) neg pf)
+              (Either
+                (= Integer (Negative (add1 k-1)) (Positive 0))
+                (= Integer (Negative neg) (Positive 0)))))
+          (λ (pos)
+            (ind-Nat pos
+              (λ (p)
+                (-> (= Integer (IntTimes (Negative (add1 k-1)) (Positive p)) (Positive 0))
+                    (Either
+                      (= Integer (Negative (add1 k-1)) (Positive 0))
+                      (= Integer (Positive p) (Positive 0)))))
+              (λ (k-1*0=0) (right (same (Positive 0))))
+              (λ (p-1 IH pf)
+                (ind-Absurd (Posk+1*Negj=0->Absurd p-1 (add1 k-1)
+                              (trans (*-comm (Positive (add1 p-1)) (Negative (add1 k-1)))
+                                pf))
+                  (Either
+                    (= Integer (Negative (add1 k-1)) (Positive 0))
+                    (= Integer (Positive (add1 p-1)) (Positive 0))))))))))))
+
+(claim Pos*x=0->x=0
+  (Π ([k Nat]
+      [x Integer])
+    (-> (= Integer (IntTimes (Positive k) x) (Positive 0))
+        (Either
+          (= Integer (Positive k) (Positive 0))
+          (= Integer x (Positive 0))))))
+(define Pos*x=0->x=0
+  (λ (k)
+    (ind-Nat k
+      (λ (k)
+        (Π ([x Integer])
+          (-> (= Integer (IntTimes (Positive k) x) (Positive 0))
+            (Either
+              (= Integer (Positive k) (Positive 0))
+              (= Integer x (Positive 0))))))
+      (λ (x 0*x=0)
+        (left (same (Positive 0))))
+      (λ (k-1 IH x)
+        (ind-Either x
+          (λ (x)
+            (-> (= Integer (IntTimes (Positive (add1 k-1)) x) (Positive 0))
+              (Either
+                (= Integer (Positive (add1 k-1)) (Positive 0))
+                (= Integer x (Positive 0)))))
+          (λ (neg pf)
+            (ind-Absurd (Posk+1*Negj=0->Absurd k-1 neg pf)
+              (Either
+                (= Integer (Positive (add1 k-1)) (Positive 0))
+                (= Integer (Negative neg) (Positive 0)))))
+          (λ (pos)
+            (ind-Nat pos
+              (λ (p)
+                (-> (= Integer (IntTimes (Positive (add1 k-1)) (Positive p)) (Positive 0))
+                    (Either
+                      (= Integer (Positive (add1 k-1)) (Positive 0))
+                      (= Integer (Positive p) (Positive 0)))))
+              (λ (k-1*0=0) (right (same (Positive 0))))
+              (λ (p-1 IH pf)
+                (ind-Absurd (Posk+1*Posj+1=0->Absurd k-1 p-1 pf)
+                  (Either
+                    (= Integer (Positive (add1 k-1)) (Positive 0))
+                    (= Integer (Positive (add1 p-1)) (Positive 0))))))))))))
+
+
+(claim Zero-Has-No-Proper-Divisors
+  (No-Proper-Divisors Integer IntTimes (Positive 0)))
+(define Zero-Has-No-Proper-Divisors
+  (λ (x)
+    (ind-Either x
+      (λ (x)
+        (Π ([y Integer])
+          (-> (= Integer (IntTimes x y) (Positive 0))
+            (Either
+              (= Integer x (Positive 0))
+              (= Integer y (Positive 0))))))
+      (λ (neg y x*y=0)
+        (Neg*x=0->x=0 neg y x*y=0))
+      (λ (pos y x*y=0)
+        (Pos*x=0->x=0 pos y x*y=0)))))
+|#
+#;(claim Integers-Form-An-Integral-Domain
+  (Integral-Domain Integer IntPlus IntTimes))
+
+
+
+#;(define Integers-Form-An-Integral-Domain
+  (cons Integers-Form-A-Commutative-Ring
+    TODO))
+
+;; stuff for KFG
+#|
+(claim Maybe (-> U U))
+(define Maybe (λ (E) (Either E Trivial)))
+
+(claim just (Π ([E U] [e E]) (Maybe E)))
+(define just (λ (E e) (left e)))
+
+(claim nothing (Π ([E U]) (Maybe E)))
+(define nothing (λ (E) (right sole)))
+
+;; Sets are defined by lists,
+;; with the following type to describe members
+;; of that set
+(claim List-Ref
+  (Π ([E U]) (-> (List E) Nat (Maybe E))))
+(define List-Ref
+  (λ (E ls)
+    (ind-List ls
+      (λ (ls) (-> Nat (Maybe E)))
+      (λ (k) (nothing E))
+      (λ (e d ans)
+        (λ (k)
+          (which-Nat k
+            (just E e)
+            (λ (k-1) (ans k-1))))))))
+
+(claim Element
+  (Π ([E U]) (-> (List E) E U)))
+(define Element
+  (λ (E ls)
+    (λ (e)
+      (Σ ([k Nat])
+        (= (Maybe E) (List-Ref E ls k) (just E e))))))
+
+
+;; Here is the Klein Four Group, waiting for now.
+(claim KFG-U (List Nat))
+(define KFG-U
+  (:: 1 (:: 2 (:: 3 (:: 4 nil)))))
+(claim Element-KFG-U (-> Nat U))
+(define Element-KFG-U (Element Nat KFG-U))
+
+(claim One (Element-KFG-U 1))
+(claim Two (Element-KFG-U 2))
+(claim Three (Element-KFG-U 3))
+(claim Four (Element-KFG-U 4))
+
+(claim KFG-Θ (Π ([i Nat] [j Nat] [k Nat])(-> (Element-KFG-U i) (Element-KFG-U j) (Element-KFG-U k))))
+
+|#

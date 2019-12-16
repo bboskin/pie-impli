@@ -275,6 +275,18 @@
                            b-v)
                       (THE (ind-Vec-step-type Ev mot-v) s-v)))]))
 
+(: do-which-Either (-> Value Value Value Value Value Value))
+(define (do-which-Either tgt l-ty l r-ty r)
+  (match tgt
+    [(LEFT x)
+     (do-ap l x)]
+    [(RIGHT x)
+     (do-ap r x)]
+    [(NEU (EITHER Lv Rv) ne)
+     (NEU l-ty
+          (N-which-Either ne
+                          (THE l-ty l)
+                          (THE r-ty r)))]))
 (: do-ind-Either (-> Value Value Value Value Value))
 (define (do-ind-Either tgt mot l r)
   (match tgt
@@ -390,6 +402,12 @@
                     (val-of ρ mot)
                     (val-of ρ l)
                     (val-of ρ r))]
+    [`(which-Either ,tgt (the ,l-t ,l) (the ,r-t ,r))
+     (do-which-Either (val-of ρ tgt)
+                   (val-of ρ l-t)
+                   (val-of ρ l)
+                   (val-of ρ r-t)
+                   (val-of ρ r))]
     [`(,rator ,rand)
      (do-ap (val-of ρ rator) (val-of ρ rand))]
     [`(TODO ,where ,type)
@@ -615,6 +633,11 @@
                ,(read-back Γ mot-t mot)
                ,(read-back Γ b-t b)
                ,(read-back Γ s-t s))]
+    [(N-which-Either tgt (THE l-ty l-v) (THE r-ty r-v))
+     `(which-Either ,(read-back-neutral Γ tgt)
+                    (the ,(read-back-type Γ l-ty)
+                         ,(read-back Γ l-ty l-v))
+                    ,(read-back Γ r-ty r-v))]
     [(N-ind-Either tgt (THE mot-tv mot-v) (THE l-tv l-v) (THE r-tv r-v))
      `(ind-Either ,(read-back-neutral Γ tgt)
                   ,(read-back Γ mot-tv mot-v)

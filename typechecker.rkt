@@ -171,8 +171,8 @@
   (define the-expr
     (match (src-stx e)
       ['Nat (go `(the U Nat))]
-      ['U (go `(the U U))
-          #;(stop (src-loc e)
+      ['U #;(go `(the U U))
+          (stop (src-loc e)
                 `(U
                   "is a type, but it does not have a type."))]
       [`(-> ,A ,B)
@@ -559,6 +559,19 @@
        (go-on ((L-out (check Γ r L 'UNIVERSE))
                (R-out (check Γ r R 'UNIVERSE)))
               (go `(the U (Either ,L-out ,R-out))))]
+      [`(which-Either ,tgt ,on-left ,on-right)
+       (go-on ((`(the ,tgt-t ,tgt-out) (synth Γ r tgt)))
+              (match (val-in-ctx Γ tgt-t)
+                [(EITHER Lv Rv)
+                 (let ([x^ (fresh Γ 'x)])
+                   (go-on ((`(the ,ty ,l-out) (synth Γ r on-left))
+                           (r-out (check Γ r on-right (val-in-ctx Γ ty))))
+                          (go `(the ,ty
+                                    (which-Either ,tgt-out ,l-out ,r-out)))))]
+                [non-Either
+                 (stop (src-loc e)
+                       `("Expected an Either, but got a"
+                         ,(read-back-type Γ non-Either)))]))]
       [`(ind-Either ,tgt ,mot ,on-left ,on-right)
        (go-on ((`(the ,tgt-t ,tgt-out) (synth Γ r tgt)))
               (match (val-in-ctx Γ tgt-t)

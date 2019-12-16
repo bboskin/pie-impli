@@ -49,7 +49,7 @@
      'Absurd 'ind-Absurd
      '= 'same 'replace 'trans 'cong 'symm 'ind-=
      'Vec 'vecnil 'vec:: 'head 'tail 'ind-Vec
-     'Either 'left 'right 'ind-Either
+     'Either 'left 'right 'ind-Either 'which-Either
      'TODO 'the))
 
 ;;; Abstract syntax of high-level programs
@@ -126,6 +126,7 @@
      (List 'left Src)
      (List 'right Src)
      (List 'ind-Either Src Src Src Src)
+     (List 'which-Either Src Src Src)
      'TODO
      (List* Src Src (Listof Src))))
 
@@ -177,6 +178,7 @@
      (List 'left Core)
      (List 'right Core)
      (List 'ind-Either Core Core Core Core)
+     (List 'which-Either Core Core Core)
      (List 'TODO Srcloc Core)
      (List Core Core)))
 
@@ -276,6 +278,11 @@
                       [base-left : Norm]
                       [base-right : Norm])
   #:transparent)
+(struct N-which-Either ([target : Neutral]
+                        [base-left : Norm]
+                        [base-right : Norm])
+  #:transparent)
+
 (struct N-ap ([rator : Neutral] [rand : Norm]) #:transparent)
 
 (define-type Neutral
@@ -286,7 +293,7 @@
      N-ind-Absurd
      N-replace N-trans1 N-trans2 N-trans12 N-cong N-symm N-ind-=
      N-head N-tail N-ind-Vec1 N-ind-Vec2 N-ind-Vec12
-     N-ind-Either
+     N-ind-Either N-which-Either
      N-ap))
 
 (define-predicate Neutral? Neutral)
@@ -327,7 +334,7 @@
            (eqv? x 'Vec) (eqv? x 'vec::) (eqv? x 'vecnil)
            (eqv? x 'head) (eqv? x 'tail) (eqv? x 'ind-Vec)
            (eqv? x 'Either) (eqv? x 'left) (eqv? x 'right)
-           (eqv? x 'ind-Either) (eqv? x 'the)
+           (eqv? x 'ind-Either) (eqv? x 'which-Either) (eqv? x 'the)
            (eqv? x 'TODO))))
 
 
@@ -431,94 +438,3 @@
 (: fresh (-> Ctx Symbol Symbol))
 (define (fresh Γ x)
   (freshen (names-only Γ) x))
-
-;;;;;; added so that inferencer doesn't have to worry about structs
-;; This, for now, also defines the grammar suported for Πi-types
-;; I'm supporting all operations involving Atoms, Nats, Π, λ, List, and Vec
-;; (will be, assuredly, expanded to include more later)
-
-#;#;#;#;#;#;#;#;#;#;
-(: norm->exp (-> Norm (List 'the Core Core)))
-(define (norm->exp n)
-  (match n
-    [(THE τ e) `(the ,(structs->exp τ) ,(structs->exp e))]))
-
-(: neutral->exp (-> Neutral Core))
-(define (neutral->exp ne)
-  (match ne
-    [(N-var x) x]
-    [(N-TODO where type) `(TODO ,where ,(structs->exp type))]
-    [(N-which-Nat target base step)
-     `(which-Nat ,(neutral->exp target) ,(norm->exp base) ,(norm->exp step))]
-    [(N-iter-Nat target base step)
-     `(iter-Nat ,(neutral->exp target) ,(norm->exp base) ,(norm->exp step))]
-    [(N-rec-Nat target base step)
-     `(rec-Nat ,(neutral->exp target) ,(norm->exp base) ,(norm->exp step))]
-    [(N-ind-Nat target mot base step)
-     `(ind-Nat ,(neutral->exp target) ,(norm->exp mot) ,(norm->exp base) ,(norm->exp step))]
-    [(N-car pr) `(car ,(neutral->exp pr))]
-    [(N-cdr pr) `(cdr ,(neutral->exp pr))]
-    [(N-rec-List target base step)
-     `(rec-List  ,(neutral->exp target) ,(norm->exp base) ,(norm->exp step))]
-    [(N-ind-List target mot base step)
-     `(ind-List ,(neutral->exp target) ,(norm->exp mot) ,(norm->exp base) ,(norm->exp step))]
-    [(N-head v) `(head ,(neutral->exp v))]
-    [(N-tail v) `(tail ,(neutral->exp v))]
-    [(N-ind-Vec1 t1 t2 mot b s)
-     `(ind-Vec ,(neutral->exp t1) ,(norm->exp t2) ,(norm->exp mot) ,(norm->exp b) ,(norm->exp s))]
-    [(N-ind-Vec2 t1 t2 mot b s)
-     `(ind-Vec ,(norm->exp t1) ,(neutral->exp t2) ,(norm->exp mot) ,(norm->exp b) ,(norm->exp s))]
-    [(N-ind-Vec12 t1 t2 mot b s)
-     `(ind-Vec ,(neutral->exp t1) ,(neutral->exp t2) ,(norm->exp mot) ,(norm->exp b) ,(norm->exp s))]
-    [(N-ap rator rand) `(,(neutral->exp rator) ,(norm->exp rand))]
-    [else (error "too fancy for now! (Something Neutral)")]))
-
-(: closure->exp (-> Symbol Closure Core))
-(define (closure->exp y clo)
-  (match clo
-    [(FO-CLOS ρ x exp)
-     `(λ (,x) ,exp)]
-    [(HO-CLOS lam)
-     (error "right now, HO-clos not supported because I don't know what they do")]))
-
-(: structs->exp (-> Value Core))
-(define (structs->exp v)
-  (match v
-    ['UNIVERSE 'U]
-    ['NAT 'Nat]
-    ['ZERO 'zero]
-    [(QUOTE s) s]
-    [(ADD1 n) `(add1 ,(structs->exp n))]
-    [(PI x A c) `(Π ([,x ,(structs->exp A)]) ,(closure->exp x c))]
-    [(PIi x A c) `(Πi ([,x ,(structs->exp A)]) ,(closure->exp x c))]
-    [(LAM x c) `(λ (,x) ,(closure->exp x c))]
-    [(CONS a d) `(cons ,(structs->exp a) ,(structs->exp d))]
-    [(LIST:: a d) `(:: ,(structs->exp a) ,(structs->exp d))]
-    [(LIST τ) `(List ,(structs->exp τ))]
-    [(VEC τ n) `(Vec ,(structs->exp τ) ,(structs->exp n))]
-    [(VEC:: h t) `(vec:: ,(structs->exp h) ,(structs->exp t))]
-    [(NEU τ e) `(the ,(structs->exp τ) ,(neutral->exp e))]
-    [else (error "not ready yet! (Some Value)")]))
-
-(: inf->tv (-> Ctx Core Value))
-(define (inf->tv Γ exp)
-  (match exp
-    ['U 'UNIVERSE]
-    ['Nat 'NAT]
-    ['Atom 'ATOM]
-    ['zero 'ZERO]
-    ['nil 'NIL]
-    ['vecnil 'VECNIL]
-    ['Anything 'ANYTHING]
-    [`(quote ,s) #:when (symbol? s) (QUOTE s)]
-    [`(add1 ,n) (ADD1 (inf->tv Γ n))]
-    [`(Π ([,x ,A]) ,c) (PI x (inf->tv Γ A) (FO-CLOS (ctx->env Γ) x c))]
-    [`(Πi ([,x ,A]) ,c) (PIi x (inf->tv Γ A) (FO-CLOS (ctx->env Γ) x c))]
-    [`(λ (,x) ,c) (LAM x (FO-CLOS (ctx->env Γ) x c))]
-    [`(:: ,a ,d) (LIST:: (inf->tv Γ a) (inf->tv Γ d))]
-    [`(List ,τ) (LIST (inf->tv Γ τ))]
-    [`(Vec ,τ ,n) (VEC (inf->tv Γ τ) (inf->tv Γ n))]
-    [`(vec:: ,h ,t) (VEC:: (inf->tv Γ h) (inf->tv Γ h))]
-    [else (displayln "here's what we couldn't handle:\n")
-          (displayln exp)
-          (error "not ready yet! (Something weird happened)")]))

@@ -112,5 +112,12 @@
     (vec:: (add1 zero) (vec:: zero vecnil))))
 
 
+(claim foo22 (= Nat zero zero))
+(define foo22
+  (the (= Nat zero zero)
+    (equal Nat
+      zero
+      #:by (same zero)
+      zero)))
 
  

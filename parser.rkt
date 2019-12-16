@@ -174,6 +174,8 @@
 (define (make-ind-List loc e1 e2 e3 e4)
   (@ (syntax->srcloc loc) `(ind-List ,e1 ,e2 ,e3 ,e4)))
 
+(define (make-which-Either loc e1 e3 e4)
+  (@ (syntax->srcloc loc) `(which-Either ,e1 ,e3 ,e4)))
 
 (define (make-ind-Either loc e1 e2 e3 e4)
   (@ (syntax->srcloc loc) `(ind-Either ,e1 ,e2 ,e3 ,e4)))
@@ -251,7 +253,7 @@
                       Absurd ind-Absurd
                       = same replace symm trans cong ind-=
                       head tail Vec vec:: vecnil ind-Vec
-                      Either left right ind-Either
+                      Either left right ind-Either which-Either
                       TODO
                       equal)
     [U
@@ -431,6 +433,8 @@
      (make-right stx (parse-pie #'r))]
     [(ind-Either ~! tgt mot l r)
      (make-ind-Either stx (parse-pie #'tgt) (parse-pie #'mot) (parse-pie #'l) (parse-pie #'r))]
+    [(which-Either ~! tgt l r)
+     (make-which-Either stx (parse-pie #'tgt) (parse-pie #'l) (parse-pie #'r))]
     [(~describe "TODO" TODO)
      (make-TODO stx)]
     [(~describe "application"
@@ -493,7 +497,7 @@
                       Absurd ind-Absurd
                       = same replace symm trans cong ind-=
                       head tail Vec vec:: vecnil ind-Vec
-                      Either left right ind-Either
+                      Either left right ind-Either which-Either
                       TODO
                       equal)
     [U
@@ -796,6 +800,13 @@
      (with-syntax ([p* #'(pie->binders p)]
                    [right/loc (syntax/loc (car (syntax-e stx)) kw:right)])
        (add-disappeared (syntax/loc stx (void right/loc p*))
+                        (car (syntax-e stx))))]
+    [(which-Either ~! tgt l r)
+     (with-syntax ([tgt* #'(pie->binders tgt)]
+                   [l* #'(pie->binders l)]
+                   [r* #'(pie->binders r)]
+                   [which-Either/loc (syntax/loc (car (syntax-e stx)) kw:which-Either)])
+       (add-disappeared (syntax/loc stx (void which-Either/loc tgt* l* r*))
                         (car (syntax-e stx))))]
     [(ind-Either ~! tgt mot l r)
      (with-syntax ([tgt* #'(pie->binders tgt)]

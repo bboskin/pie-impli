@@ -30,7 +30,6 @@
   Absurd ind-Absurd
   = same replace trans cong symm ind-=
   Vec vecnil vec:: head tail ind-Vec
-  Either left right ind-Either which-Either
+  Either left right ind-Either
   TODO the
-  check-same claim define
-  equal)
+  check-same claim define)
