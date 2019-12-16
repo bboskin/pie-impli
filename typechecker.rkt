@@ -566,8 +566,18 @@
                  (let ([x^ (fresh Γ 'x)])
                    (go-on ((`(the ,l-ty ,l-out) (synth Γ r on-left))
                            (`(the ,r-ty ,r-out) (synth Γ r on-right)))
-                          (if (α-equiv? l-ty r-ty)
-                              (go `(the ,l-ty
+                          (match* ((val-in-ctx Γ l-ty) (val-in-ctx Γ r-ty))
+                            [((PI x Bv c1) (PI y Cv c2))
+                             (go-on ((_ (same-type Γ (src-loc e) Bv Lv))
+                                     (Ty (go (val-of-closure c1 (val-of (ctx->env Γ) x)))))
+                                    (go `(the ,(read-back-type Γ Ty)
+                                              (which-Either ,tgt-out
+                                                  (the ,l-ty ,l-out)
+                                                  (the ,r-ty ,r-out)))))]
+                            [(non-Pi non-Pi)
+                             (stop (src-loc e) `("Expected a function, got" ,(read-back-type Γ non-Pi)))])
+                          #;(if (α-equiv? l-ty r-ty)
+                              (go `(the ,(read-back-type Γ (do-ap (val-in-ctx Γ l-ty) (value-of Γ l-out)))
                                     (which-Either ,tgt-out
                                                   (the ,l-ty ,l-out)
                                                   (the ,r-ty ,r-out))))
@@ -577,6 +587,20 @@
                  (stop (src-loc e)
                        `("Expected an Either, but got a"
                          ,(read-back-type Γ non-Either)))]))]
+      #;(match (val-in-ctx Γ p-t-out)
+                [(EQUAL Av from-v to-v)
+                 (match (val-in-ctx Γ f-t-out)
+                   [(PI x Bv c)
+                    (go-on ((_ (same-type Γ (src-loc e) Av Bv))
+                            (Cv (go (val-of-closure c from-v)))
+                            (f-v (go (val-in-ctx Γ f-out))))
+                           (go `(the (= ,(read-back-type Γ Cv)
+                                        ,(read-back Γ Cv (do-ap f-v from-v))
+                                        ,(read-back Γ Cv (do-ap f-v to-v)))
+                                     (cong ,p-out ,(read-back-type Γ Cv) ,f-out))))]
+                   [non-Pi
+                    (stop (src-loc e) `("Expected a function, got" ,(read-back-type Γ non-Pi)))])]
+                [non= (stop (src-loc e) `("Expected =, got" ,(read-back-type Γ non=)))])
       [`(ind-Either ,tgt ,mot ,on-left ,on-right)
        (go-on ((`(the ,tgt-t ,tgt-out) (synth Γ r tgt)))
               (match (val-in-ctx Γ tgt-t)

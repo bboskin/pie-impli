@@ -326,7 +326,7 @@ real quick, proofs just about the natural # fns
                  (the U (which-Nat neg-k
                     (which-Nat neg-j Trivial (λ (_) Absurd))
                     (λ (neg-k-1) (which-Nat neg-j Absurd (λ (neg-j-1) (= Integer (Negative neg-k-1) (Negative neg-j-1)))))))))
-              (λ (pos-j) Absurd)))))
+              (the (-> Nat U) (λ (pos-j) Absurd))))))
       TODO #;(the (-> Nat U)
         (λ (pos-k)
           (which-Either j
