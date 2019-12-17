@@ -8,6 +8,9 @@
 (require racket/match (for-syntax racket/base syntax/parse))
 (provide (all-defined-out))
 
+(require/typed "inference.rkt"
+               [solve (-> Core Core (U Core #f))]
+               [solve-arg (-> Core Core Core (U (Listof Core) #f))])
 
 (require/typed "locations.rkt"
   [location-for-info? (-> Loc Boolean)]
@@ -88,6 +91,16 @@
                                    `(Π ,(list* `(,y ,A1) more) ,B)))])
           (begin ((pie-info-hook) x-loc `(binding-site ,A-out))
                  (go `(Π ((,z ,A-out)) ,B-out)))))]
+     ;;;;;;;;;;;;;;;;;;;;;
+     ;; Confirming that Πi is a type
+     [`(Πi ((,(binder x-loc x) ,A)) ,B)
+      (let ((y (fresh Γ x)))
+        (go-on ([A-out (is-type Γ r A)]
+                [A-outv (go (val-in-ctx Γ A-out))]
+                [B-out (is-type (bind-free Γ y A-outv) (extend-renaming r x y) B)])
+               (begin ((pie-info-hook) x-loc `(binding-site ,A-out))
+                      (go `(Πi ((,y ,A-out)) ,B-out)))))]
+     
      ['Atom
       (go 'Atom)]
      [`(Pair ,A ,D)
@@ -199,6 +212,18 @@
                              'UNIVERSE)])
          (begin ((pie-info-hook) x-loc `(binding-site ,A-out))
                 (go `(the U (Π ((,x^ ,A-out)) ,B-out))))))]
+     ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     ;; Synthesizing that Πi is a U
+     [`(Πi ((,(binder x-loc x) ,A)) ,B)
+      (let ([x^ (fresh Γ x)])
+        (go-on ([A-out (check Γ r A 'UNIVERSE)]
+                [B-out (check (bind-free Γ x^
+                                         (val-in-ctx Γ A-out))
+                              (extend-renaming r x x^)
+                              B
+                              'UNIVERSE)])
+               (begin ((pie-info-hook) x-loc `(binding-site ,A-out))
+                      (go `(the U (Πi ((,x^ ,A-out)) ,B-out))))))]
      ['zero (go `(the Nat zero))]
      [`(add1 ,n)
       (go-on ((n-out (check Γ r n 'NAT)))
@@ -568,6 +593,9 @@
                          Γ
                          (val-of-closure c (val-in-ctx Γ rand-out)))
                        (,rator-out ,rand-out))))]
+          [(PIi x A c)
+                 (go-on ((`(the ,t-rand ,rand-out) (synth Γ r rand)))
+                        (solve-app (src-loc rator) rator-t t-rand rator-out rand-out))]
           [non-PI (stop (src-loc e)
                         `("Not a Π:" ,(read-back-type Γ non-PI)))]))]
      ;;; Γ ⊢ (f x y ...) synth ~> (the (Pi ((x A)) B) app')
@@ -586,6 +614,9 @@
                          Γ
                          (val-of-closure c (val-in-ctx Γ rand-out)))
                        (,app0 ,rand-out))))]
+          [(PIi x A c)
+                 (go-on ((`(the ,t-rand ,rand-out) (synth Γ r rand)))
+                        (solve-app (src-loc rator) app0-t t-rand app0 rand-out))]
           [non-PI (stop (src-loc e)
                         `("Not a Π:" ,(read-back-type Γ non-PI)))]))]
      [x
@@ -612,6 +643,23 @@
   (go-on ((`(the ,ty ,out) the-expr))
     (begin (send-pie-info (src-loc e) `(has-type ,ty))
            the-expr)))
+
+;; definitions above check
+(: solve-app (-> Loc Core Core Core Core (Perhaps (List 'the Core Core))))
+(define (solve-app loc τ-rator τ-rand rator rand)
+  (let ([succeed? (solve-arg τ-rator τ-rand rand)])
+    (match succeed?
+      [#f (stop loc `("Could not resolve type: " ,τ-rator
+                      "as a function expecting: " ,τ-rand))]
+      [`(,τi . ,args-found)
+       (go `(the ,τi (,(curry-app rator args-found) ,rand)))])))
+
+(: curry-app (-> Core (U Null (Listof Core)) Core))
+(define (curry-app rator rands)
+  (match rands
+    ['() rator]
+    [`(,a . ,d) (curry-app `(,rator ,a) d)]))
+
 
 (: check (-> Ctx Renaming Src Value (Perhaps Core)))
 (define (check Γ r e tv)
@@ -640,6 +688,19 @@
                    ,(@ (not-for-info (src-loc e))
                        `(λ (,y . ,xs) ,b))))
              tv)]
+     ;; new λi case
+     [`(λi ,b)
+      (match tv
+        [(PIi y A c)
+         (let ((x^ (fresh Γ y)))
+           (go-on ((b-out (check (bind-free Γ x^ A)
+                                 (extend-renaming r y x^)
+                                 b
+                                 (val-of-closure c (NEU A (N-var x^))))))
+                  (begin ((pie-info-hook) (src-loc e) `(binding-site ,(read-back-type Γ A)))
+                         (go `(λ (,x^) ,b-out)))))]
+        [else (check Γ r b tv)])]
+     
      [`(let ((,(binder x-loc x) ,x-e)) ,b)
       (let ((x^ (fresh Γ x)))
         (go-on ((`(the ,x-t-out ,x-e-out) (synth Γ r x-e))
@@ -750,6 +811,14 @@
   (go-on ((ok out))
     (begin (send-pie-info (src-loc e) `(has-type ,(read-back-type Γ tv)))
            out)))
+
+(: solve-types (-> Loc Core Core (Perhaps Void)))
+(define (solve-types loc τ1 τ2)
+  (let ([succeed? (solve τ1 τ2)])
+    (if (equal? #f succeed?)
+        (stop loc
+              `("Could not resolve expected type: " ,τ1 "with synthesized type: " ,τ2))
+        (go (void)))))
 
 (: same-type (-> Ctx Loc Value Value (Perhaps Void)))
 (define (same-type Γ where given expected)
