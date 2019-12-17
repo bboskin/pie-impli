@@ -1,4 +1,4 @@
-#lang pie-impli
+#lang pie-a-let-mode
 
 ;; definition of a group
 
@@ -176,6 +176,16 @@
   (λ (j k) (iter-Nat j zero (plus k))))
 
 
+;; some small proofs about nat operations
+(claim plus-id-r
+  (Π ([k Nat])
+    (= Nat (plus k 0) k)))
+(define plus-id-r
+  (λ (k)
+    (ind-Nat k
+      (λ (k) (= Nat (plus k 0) k))
+      (same 0)
+      (λ (k-1 IH) (cong IH succ)))))
 
 (claim abs (-> Integer Nat))
 (define abs
@@ -558,7 +568,29 @@
     (= Integer (IntPlus (Positive k) (Positive j))
        (Positive (plus k j)))))
 (define pos-plus-pos=nat+nat
-  TODO)
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntPlus (Positive k) (Positive j))
+          (Positive (plus k j))))
+      (same (Positive j))
+      (λ (k-1 IH)
+        (cong IH Intadd1)))))
+
+(claim neg-plus-neg=nat+nat+1
+  (Π ([k Nat]
+      [j Nat])
+    (= Integer (IntPlus (Negative k) (Negative j))
+       (Negative (add1 (plus k j))))))
+(define neg-plus-neg=nat+nat+1
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntPlus (Negative k) (Negative j))
+          (Negative (add1 (plus k j)))))
+      (same (Negative (add1 j)))
+      (λ (k-1 IH)
+        (cong IH Intsub1)))))
 
 (claim pos-times-pos=nat*nat
   (Π ([k Nat]
@@ -566,7 +598,19 @@
     (= Integer (IntTimes (Positive k) (Positive j))
        (Positive (times k j)))))
 (define pos-times-pos=nat*nat
-  TODO)
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntTimes (Positive k) (Positive j))
+          (Positive (times k j))))
+      (same (Positive 0))
+      (λ (k-1 IH)
+        (equal Integer
+          (IntPlus (Positive j) (IntTimes (Positive k-1) (Positive j)))
+          #:by (cong IH (IntPlus (Positive j)))
+          (IntPlus (Positive j) (Positive (times k-1 j)))
+          #:by (pos-plus-pos=nat+nat j (times k-1 j))
+          (Positive (plus j (times k-1 j))))))))
 
 (claim neg-times-neg=nat+1*nat+1
   (Π ([k Nat]
@@ -574,16 +618,19 @@
     (= Integer (IntTimes (Negative k) (Negative j))
        (Positive (times (add1 k) (add1 j))))))
 (define neg-times-neg=nat+1*nat+1
-  TODO)
-
-(claim pos-times-neg-is-negative
-  (Π ([k Nat]
-      [j Nat])
-    (Σ ([n Nat])
-       (= Integer (IntTimes (Positive k) (Negative j))
-          (Negative n)))))
-(define pos-times-neg-is-negative
-  TODO)
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (IntTimes (Negative k) (Negative j))
+       (Positive (times (add1 k) (add1 j)))))
+      (cong (symm (plus-id-r (add1 j))) Positive)
+      (λ (k-1 IH)
+        (equal Integer
+          (IntPlus (Positive (add1 j)) (IntTimes (Negative k-1) (Negative j)))
+          #:by (cong IH (IntPlus (Positive (add1 j))))
+          (IntPlus (Positive (add1 j)) (Positive (times (add1 k-1) (add1 j))))
+          #:by (pos-plus-pos=nat+nat (add1 j) (times (add1 k-1) (add1 j)))
+          (Positive (times (add1 (add1 k-1)) (add1 j))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; proofs about addition
@@ -1201,6 +1248,31 @@
    (λ (k)
      (cons (*-1-id-l k)
        (*-1-id-r k)))))
+
+
+;; proof that would be above but needs info about *1 id
+(claim add1-pos-times-neg-is-negative
+  (Π ([k Nat]
+      [j Nat])
+    (Σ ([n Nat])
+       (= Integer (IntTimes (Positive (add1 k)) (Negative j))
+          (Negative n)))))
+(define add1-pos-times-neg-is-negative
+  (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (Σ ([n Nat])
+          (= Integer (IntTimes (Positive (add1 k)) (Negative j))
+             (Negative n))))
+      (cons j (*-1-id-r (Negative j)))
+      (λ (k-1 IH)
+        (cons (add1 (plus j (car IH)))
+          (equal Integer
+            (IntPlus (Negative j) (IntTimes (Positive (add1 k-1)) (Negative j)))
+            #:by (cong (cdr IH) (IntPlus (Negative j)))
+            (IntPlus (Negative j) (Negative (car IH)))
+            #:by (neg-plus-neg=nat+nat+1 j (car IH))
+            (Negative (add1 (plus j (car IH))))))))))
 
 ;; proof that * and add1, sub1 distribute on left and right
 
@@ -1849,7 +1921,7 @@
                   (cong (trans (symm (cdr pr1)) pf)
                     Int->Nat)))))
            (nat-of-negative-nonzero (car pr1)))))
-      (pos-times-neg-is-negative (add1 k) j))))
+      (add1-pos-times-neg-is-negative k j))))
 
 
 (claim Posk+1*Posj+1=0->Absurd
@@ -1886,6 +1958,8 @@
           (add1 (add1 (Int->Nat (Positive (plus j (times (add1 k-1) (add1 j)))))))
           0
           (equal Nat
+            (add1 (add1 (Int->Nat (Positive (plus j (times (add1 k-1) (add1 j)))))))
+            #:by (same (add1 (add1 (Int->Nat (Positive (plus j (times (add1 k-1) (add1 j))))))))
             (add1 (add1 (Int->Nat (Positive (plus j (times (add1 k-1) (add1 j)))))))
             #:by (cong (symm (neg-times-neg=nat+1*nat+1 (add1 k-1) j)) Int->Nat)
             (Int->Nat (IntTimes (Negative (add1 k-1)) (Negative j)))
@@ -2029,76 +2103,11 @@
       (λ (pos y x*y=0)
         (Pos*x=0->x=0 pos y x*y=0)))))
 
-#|
 
-(claim Integral-Domain
-  (Π ([S U])
-    (-> (-> S S S) (-> S S S) U)))
-(define Integral-Domain
-  (λ (S + *)
-    (Pair (Commutative-Ring S + *)
-      (Σ ([z S])
-        (No-Proper-Divisors S * z)))))
-
-|#
 (claim Integers-Form-An-Integral-Domain
   (Integral-Domain Integer IntPlus IntTimes))
-
-
 
 (define Integers-Form-An-Integral-Domain
   (cons Integers-Form-A-Commutative-Ring
     (cons Zero
       Zero-Has-No-Proper-Divisors)))
-
-;; stuff for KFG
-#|
-(claim Maybe (-> U U))
-(define Maybe (λ (E) (Either E Trivial)))
-
-(claim just (Π ([E U] [e E]) (Maybe E)))
-(define just (λ (E e) (left e)))
-
-(claim nothing (Π ([E U]) (Maybe E)))
-(define nothing (λ (E) (right sole)))
-
-;; Sets are defined by lists,
-;; with the following type to describe members
-;; of that set
-(claim List-Ref
-  (Π ([E U]) (-> (List E) Nat (Maybe E))))
-(define List-Ref
-  (λ (E ls)
-    (ind-List ls
-      (λ (ls) (-> Nat (Maybe E)))
-      (λ (k) (nothing E))
-      (λ (e d ans)
-        (λ (k)
-          (which-Nat k
-            (just E e)
-            (λ (k-1) (ans k-1))))))))
-
-(claim Element
-  (Π ([E U]) (-> (List E) E U)))
-(define Element
-  (λ (E ls)
-    (λ (e)
-      (Σ ([k Nat])
-        (= (Maybe E) (List-Ref E ls k) (just E e))))))
-
-
-;; Here is the Klein Four Group, waiting for now.
-(claim KFG-U (List Nat))
-(define KFG-U
-  (:: 1 (:: 2 (:: 3 (:: 4 nil)))))
-(claim Element-KFG-U (-> Nat U))
-(define Element-KFG-U (Element Nat KFG-U))
-
-(claim One (Element-KFG-U 1))
-(claim Two (Element-KFG-U 2))
-(claim Three (Element-KFG-U 3))
-(claim Four (Element-KFG-U 4))
-
-(claim KFG-Θ (Π ([i Nat] [j Nat] [k Nat])(-> (Element-KFG-U i) (Element-KFG-U j) (Element-KFG-U k))))
-
-|#
