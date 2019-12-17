@@ -407,8 +407,6 @@ consequences of Integer equality from our work with Nat equality
 ;; TODO minimize number of proofs needed and
 ;; edit later proofs based on any improvements.
 
-
-
 #| What can we do to to Integers besides make them Nats? |#
 
 ;; We can negate integers! Don't forget that (Negative k)
@@ -448,7 +446,7 @@ consequences of Integer equality from our work with Nat equality
     (-> (= Integer (Negate k) (Positive 0))
         (= Integer k (Positive 0)))))
 
-;; SIMPLIFIED using Neg->Nat-is-Nonzero
+;; SIMPLIFIED the crux of this a lot by using new proof Neg->Nat-is-Nonzero
 (define Neg=0->same
   (λ (k)
     (ind-Int k
@@ -593,4 +591,652 @@ consequences of Integer equality from our work with Nat equality
 
 ;; having a very solid understanding about the Nats and Integers
 ;; as far as their respective orderings, and their mutual relationship,
-;; we define addition and multiplication.
+;; we're ready to define addition!
+;; Here we have it, on both the Nats and the Integers
+
+(claim plus (-> Nat Nat Nat))
+(define plus (λ (j k) (iter-Nat j k succ)))
+
+(claim Plus (-> Integer Integer Integer))
+(define Plus
+  (λ (j k)
+    (which-Int j
+      Integer
+      (λ (neg1) (iter-Nat neg1 (Sub1 k) Sub1))
+      (λ (pos1) (iter-Nat pos1 k Add1)))))
+
+;; having these two definitions, we now of course begin by
+;; proving relationships between plus and Plus, also
+;; providing for us some of the sign/value expectations from Plus
+(claim Posj-Plus-Posk=j-plus-k
+  (Π ([j Nat]
+      [k Nat])
+    (= Integer (Plus (Positive j) (Positive k))
+       (Positive (plus j k)))))
+(define Posj-Plus-Posk=j-plus-k
+  (λ (j k)
+    (ind-Nat j
+      (λ (j)
+        (= Integer (Plus (Positive j) (Positive k))
+          (Positive (plus j k))))
+      (same (Positive k))
+      (λ (_ IH) (cong IH Add1)))))
+
+;; the add1 just comes from the shifted def of Negative
+(claim Negj-plus-Negk=Neg-add1-j-plus-k
+  (Π ([j Nat]
+      [k Nat])
+    (= Integer (Plus (Negative j) (Negative k))
+       (Negative (add1 (plus j k))))))
+(define Negj-plus-Negk=Neg-add1-j-plus-k
+  (λ (j k)
+    (ind-Nat j
+      (λ (j)
+        (= Integer (Plus (Negative j) (Negative k))
+          (Negative (add1 (plus j k)))))
+      (same (Negative (add1 k)))
+      (λ (_ IH) (cong IH Sub1)))))
+
+;; TODO define + on encoded integers, and prove
+;; expected result for Plus on mixed-signs.
+
+#|Now, we will prove the basics about + on Nats, and
+then see if we can use our isomorphism to prove it for Ints.
+
+The basics are:
+0 is an identity on left and right
+associativity
+commutativity
+
+
+This might not get us where we need for Ints.
+If not, we can define a function which is
+Integer addition on encoded integers,
+and prove the properties of that.
+
+And if THAT doesn't work, we can try to prove it directly
+(I have this in an other file, we'll be fine regardless)
+ Let's see! :)
+
+|#
+
+(claim plus-0-l (Π ([k Nat]) (= Nat (plus 0 k) k)))
+(define plus-0-l (λ (k) (same k)))
+(claim plus-0-r (Π ([k Nat]) (= Nat (plus k 0) k)))
+(define plus-0-r
+  (λ (k)
+    (ind-Nat k
+      (λ (k) (= Nat (plus k 0) k))
+      (same 0)
+      (λ (k-1 IH) (cong IH succ)))))
+
+(claim plus-assoc
+  (Π ([j Nat]
+      [k Nat]
+      [l Nat])
+    (= Nat (plus (plus j k) l)
+       (plus j (plus k l)))))
+(define plus-assoc
+  (λ (j k l)
+    (ind-Nat j
+      (λ (j)
+        (= Nat (plus (plus j k) l)
+          (plus j (plus k l))))
+      (same (plus k l))
+      (λ (j-1 IH)
+        (cong IH succ)))))
+
+;; Lemma for plus-comm, and proof on other side just for completeness
+(claim plus-add1-r
+  (Π ([j Nat]
+      [k Nat])
+    (= Nat (add1 (plus j k)) (plus j (add1 k)))))
+(define plus-add1-r
+  (λ (j k)
+    (ind-Nat j
+      (λ (j) (= Nat (add1 (plus j k)) (plus j (add1 k))))
+      (same (add1 k))
+      (λ (j-1 IH)
+        (cong IH succ)))))
+
+(claim plus-add1-l
+  (Π ([j Nat]
+      [k Nat])
+    (= Nat (add1 (plus j k)) (plus (add1 j) k))))
+(define plus-add1-l
+  (λ (j k) (same (add1 (plus j k)))))
+
+(claim plus-comm
+  (Π ([j Nat]
+      [k Nat])
+    (= Nat (plus j k) (plus k j))))
+(define plus-comm
+  (λ (j k)
+    (ind-Nat j
+      (λ (j) (= Nat (plus j k) (plus k j)))
+      (symm (plus-0-r k))
+      (λ (j-1 IH)
+        (equal Nat
+          (add1 (plus j-1 k))
+          #:by (cong IH succ)
+          (add1 (plus k j-1))
+          #:by (plus-add1-r k j-1)
+          (plus k (add1 j-1)))))))
+
+
+;; Here are the proofs directly on the Integers.
+;; Maybe later I'll have another set of
+;; proofs that can be swapped out, that just came straight from the Nats'.
+
+(claim +-zero-l
+  (Π ([k Integer])
+    (= Integer (Plus (Positive 0) k) k)))
+(define +-zero-l
+  (λ (k) (same k)))
+
+(claim +-zero-r
+  (Π ([k Integer])
+    (= Integer (Plus k (Positive 0)) k)))
+(define +-zero-r
+  (λ (k)
+    (ind-Int k
+      (λ (k) (= Integer (Plus k (Positive 0)) k))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg)
+            (= Integer (Plus (Negative neg) (Positive 0))
+                     (Negative neg)))
+          (same (Negative 0))
+          (λ (neg-1 ans)
+            (cong ans Sub1))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos) (= Integer
+                     (Plus (Positive pos) (Positive 0))
+                     (Positive pos)))
+          (same (Positive 0))
+          (λ (_ ans)
+            (cong ans Add1)))))))
+
+;; Proof that + is associative
+
+;; we don't need +-add1-r til commutativity but it goes here
+(claim +-add1-r
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer (Plus k (Add1 j))
+       (Add1 (Plus k j)))))
+(define +-add1-r
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (Plus k (Add1 j))
+             (Add1 (Plus k j)))))
+      (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (Plus (Negative k) (Add1 j))
+               (Add1 (Plus (Negative k) j))))
+      (trans (Sub1-Add1-same j)
+        (symm (Add1-Sub1-same j)))
+      (λ (k-1 IH)
+        (equal Integer
+          (Sub1 (Plus (Negative k-1) (Add1 j)))
+          #:by (cong IH Sub1)
+          (Sub1 (Add1 (Plus (Negative k-1) j)))
+          #:by (Sub1-Add1-same (Plus (Negative k-1) j))
+          (Plus (Negative k-1) j)
+          #:by (symm (Add1-Sub1-same (Plus (Negative k-1) j)))
+          (Add1 (Plus (Negative (add1 k-1)) j))))))
+      (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (Plus (Positive k) (Add1 j))
+       (Add1 (Plus (Positive k) j))))
+      (same (Add1 j))
+      (λ (k-1 IH)
+        (cong IH Add1)))))))
+
+
+(claim +-add1-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (Plus (Add1 k) j)
+       (Add1 (Plus k j)))))
+(define +-add1-l
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer
+             (Plus (Add1 k) j)
+             (Add1 (Plus k j)))))
+      (λ (k j)
+        (ind-Nat k
+          (λ (k)
+            (= Integer
+              (Plus (Add1 (Negative k)) j)
+              (Add1 (Plus (Negative k) j))))
+          (symm (Add1-Sub1-same j))
+          (λ (k-1 ans)
+            (symm (Add1-Sub1-same (Plus (Negative k-1) j))))))
+      (λ (k)
+        (ind-Nat k
+          (λ (k)
+            (Π ([j Integer])
+              (= Integer
+                 (Plus (Add1 (Positive k)) j)
+                 (Add1 (Plus (Positive k) j)))))
+          (λ (j) (same (Add1 j)))
+          (λ (k-1 ans)
+            (λ (j)
+          (same (Add1 (Add1 (Plus (Positive k-1) j)))))))))))
+
+(claim +-sub1-l
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer
+       (Plus (Sub1 k) j)
+       (Sub1 (Plus k j)))))
+(define +-sub1-l
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer
+             (Plus (Sub1 k) j)
+             (Sub1 (Plus k j)))))
+      (λ (k j)
+        (ind-Nat k
+          (λ (k)
+            (= Integer
+              (Plus (Sub1 (Negative k)) j)
+              (Sub1 (Plus (Negative k) j))))
+          (same (Sub1 (Sub1 j)))
+          (λ (k-1 ans) (cong ans Sub1))))
+      (λ (k j)
+        (ind-Nat k
+          (λ (k)
+            (= Integer
+              (Plus (Sub1 (Positive k)) j)
+              (Sub1 (Plus (Positive k) j))))
+          (same (Sub1 j))
+          (λ (k-1 ans)
+            (symm (Sub1-Add1-same (Plus (Positive k-1) j)))))))))
+
+(claim +-sub1-r-neg
+  (Π ([k Nat]
+      [j Integer])
+    (= Integer (Plus (Negative k) (Sub1 j))
+       (Sub1 (Plus (Negative k) j)))))
+
+(claim +-sub1-r
+  (Π ([k Integer]
+      [j Integer])
+    (= Integer (Plus k (Sub1 j))
+       (Sub1 (Plus k j)))))
+(define +-sub1-r
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (Plus k (Sub1 j))
+             (Sub1 (Plus k j)))))
+      (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (Plus (Negative k) (Sub1 j))
+          (Sub1 (Plus (Negative k) j))))
+      (same (Sub1 (Sub1 j)))
+      (λ (k-1 ans)
+        (cong ans Sub1))))
+      (λ (k j)
+    (ind-Nat k
+      (λ (k)
+        (= Integer (Plus (Positive k) (Sub1 j))
+          (Sub1 (Plus (Positive k) j))))
+      (same (Sub1 j))
+      (λ (k-1 ans)
+        (equal Integer
+          (Add1 (Plus (Positive k-1) (Sub1 j)))
+          #:by (cong ans Add1)
+          (Add1 (Sub1 (Plus (Positive k-1) j)))
+          #:by (Add1-Sub1-same (Plus (Positive k-1) j))
+          (Plus (Positive k-1) j)
+          #:by (symm (Sub1-Add1-same (Plus (Positive k-1) j)))
+          (Sub1 (Add1 (Plus (Positive k-1) j))))))))))
+
+(claim +-assoc
+  (Π ([k Integer]
+      [j Integer]
+      [l Integer])
+    (= Integer (Plus k (Plus j l))
+       (Plus (Plus k j) l))))
+
+(define +-assoc
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer]
+            [l Integer])
+          (= Integer (Plus k (Plus j l))
+             (Plus (Plus k j) l))))
+        (λ (neg)
+    (ind-Nat neg
+      (λ (neg)
+        (Π ([j Integer]
+            [l Integer])
+          (= Integer (Plus (Negative neg) (Plus j l))
+             (Plus (Plus (Negative neg) j) l))))
+      (λ (j l)
+        (symm (+-sub1-l j l)))
+      (λ (neg-1 ans)
+        (λ (j l)
+          (equal Integer
+            (Sub1 (Plus (Negative neg-1) (Plus j l)))
+            #:by (cong (ans j l) Sub1)
+            (Sub1 (Plus (Plus (Negative neg-1) j) l))
+            #:by (symm (+-sub1-l (Plus (Negative neg-1) j) l))
+            (Plus (Sub1 (Plus (Negative neg-1) j)) l))))))
+        (λ (pos)
+    (ind-Nat pos
+      (λ (pos)
+        (Π ([j Integer]
+            [l Integer])
+          (= Integer (Plus (Positive pos) (Plus j l))
+             (Plus (Plus (Positive pos) j) l))))
+      (λ (j l) (same (Plus j l)))
+      (λ (pos-1 ans)
+        (λ (j l)
+          (equal Integer
+            (Add1 (Plus (Positive pos-1) (Plus j l)))
+            #:by (cong (ans j l) Add1)
+            (Add1 (Plus (Plus (Positive pos-1) j) l))
+            #:by (symm (+-add1-l (Plus (Positive pos-1) j) l))
+            (Plus (Add1 (Plus (Positive pos-1) j)) l)))))))))
+
+
+
+;; proof that + is commutative
+
+(claim +-comm
+  (Π ([j Integer]
+      [k Integer])
+    (= Integer (Plus j k) (Plus k j))))
+
+(define +-comm
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (Π ([j Integer])
+          (= Integer (Plus k j) (Plus j k))))
+      (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (Plus (Negative k) j) (Plus j (Negative k))))
+      (equal Integer
+        (Sub1 j)
+        #:by (symm (cong (+-zero-r j) Sub1))
+        (Sub1 (Plus j (Positive 0)))
+        #:by (symm (+-sub1-r j (Positive 0)))
+        (Plus j (Negative 0)))
+      (λ (k-1 ans)
+        (equal Integer
+          (Sub1 (Plus (Negative k-1) j))
+          #:by (cong ans Sub1)
+          (Sub1 (Plus j (Negative k-1)))
+          #:by (symm (+-sub1-r j (Negative k-1)))
+          (Plus j (Negative (add1 k-1)))))))
+      (λ (k j)
+    (ind-Nat k
+      (λ (k) (= Integer (Plus (Positive k) j) (Plus j (Positive k))))
+      (symm (+-zero-r j))
+      (λ (k-1 ans)
+        (equal Integer
+          (Add1 (Plus (Positive k-1) j))
+          #:by (cong ans Add1)
+          (Add1 (Plus j (Positive k-1)))
+          #:by (symm (+-add1-r j (Positive k-1)))
+          (Plus j (Positive (add1 k-1))))))))))
+
+
+;; Here are some more proofs about things that the Nats can't talk about (yet) like
+;; negativity and inverses!
+
+(claim +-inv-same-negative-1
+  (Π ([k Nat])
+    (= Integer
+       (Plus (Positive k) (Negative k))
+       (Negative 0))))
+(define +-inv-same-negative-1
+  (λ (k)
+    (ind-Nat k
+      (λ (k) (= Integer
+               (Plus (Positive k) (Negative k))
+               (Negative 0)))
+      (same (Negative 0))
+      (λ (k-1 IH)
+        (equal Integer
+          (Add1 (Plus (Positive k-1) (Negative (add1 k-1))))
+          #:by (cong (+-comm (Positive k-1) (Negative (add1 k-1))) Add1)
+          (Add1 (Sub1 (Plus (Negative k-1) (Positive k-1))))
+          #:by (Add1-Sub1-same (Plus (Negative k-1) (Positive k-1)))
+          (Plus (Negative k-1) (Positive k-1))
+          #:by (+-comm (Negative k-1) (Positive k-1))
+          (Plus (Positive k-1) (Negative k-1))
+          #:by IH
+          (Negative 0))))))
+
+(claim +-inv-r-0
+  (Π ([k Integer])
+    (= Integer (Plus k (Negate k)) (Positive 0))))
+(define +-inv-r-0
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (Plus k (Negate k)) (Positive 0)))
+      (λ (neg)
+        (equal Integer
+          (Plus (Negative neg) (Positive (add1 neg)))
+          #:by (+-comm (Negative neg) (Positive (add1 neg)))
+          (Add1 (Plus (Positive neg) (Negative neg)))
+          #:by (cong (+-inv-same-negative-1 neg) Add1)
+          (Positive 0)))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (p)
+            (= Integer
+              (Plus (Positive p) (Negate (Positive p)))
+              (Positive 0)))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (cong (+-inv-same-negative-1 pos-1) Add1)))))))
+
+(claim +-inv-l-0
+  (Π ([k Integer])
+    (= Integer (Plus (Negate k) k) (Positive 0))))
+(define +-inv-l-0
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (Plus (Negate k) k) (Positive 0)))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (k) (= Integer (Plus (Negate (Negative k)) (Negative k)) (Positive 0)))
+          (same (Positive 0))
+          (λ (neg-1 _)
+            (cong (+-inv-same-negative-1 (add1 neg-1)) Add1))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k) (= Integer (Plus (Negate (Positive k)) (Positive k)) (Positive 0)))
+          (same (Positive 0))
+          (λ (pos-1 _)
+            (equal Integer
+              (Plus (Negative pos-1) (Positive (add1 pos-1)))
+              #:by (+-comm (Negative pos-1) (Positive (add1 pos-1)))
+              (Add1 (Plus (Positive pos-1) (Negative pos-1)))
+              #:by (cong (+-inv-same-negative-1 pos-1) Add1)
+              (Positive 0))))))))
+
+;; 
+
+
+;; GROUP STUFF: Putting it all together
+
+(claim is-Assoc
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define is-Assoc
+  (λ (S f)
+    (Π ([x S]
+        [y S]
+        [z S])
+       (= S
+          (f x (f y z))
+          (f (f x y) z)))))
+
+(claim is-Comm
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define is-Comm
+  (λ (S f)
+    (Π ([x S]
+        [y S])
+       (= S
+          (f x y)
+          (f y x)))))
+
+(claim has-Identity
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define has-Identity
+  (λ (S f)
+    (Σ ([e S])
+      (Π ([k S])
+         (Pair (= S (f e k) k)
+               (= S (f k e) k))))))
+
+(claim has-Inverses
+  (Π ([S U]
+      [f (-> S S S)]
+      [e (has-Identity S f)]) U))
+(define has-Inverses
+  (λ (S f e)
+    (Π ([k S])
+      (Σ ([k-inv S])
+         (Pair
+          (= S (f k k-inv) (car e))
+          (= S (f k-inv k) (car e)))))))
+
+(claim Distributes-Left
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Distributes-Left
+  (λ (S + *)
+    (Π ([x S] [y S] [z S])
+      (= S
+         (* (+ x y) z)
+         (+ (* x z) (* y z))))))
+
+(claim Distributes-Right
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Distributes-Right
+  (λ (S + *)
+    (Π ([x S] [y S] [z S])
+      (= S
+         (* x (+ y z))
+         (+ (* x y) (* x z))))))
+
+(claim Group
+  (Π ([S U])
+    (-> (-> S S S) U)))
+(define Group
+  (λ (S f)
+    (Pair (is-Assoc S f)
+      (Σ ([e (has-Identity S f)])
+        (has-Inverses S f e)))))
+
+(claim Abelian-Group
+  (Π ([S U]) (-> (-> S S S) U)))
+(define Abelian-Group
+  (λ (S f)
+    (Pair (Group S f)
+      (is-Comm S f))))
+#|
+(claim Ring
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Ring
+  (λ (S + *)
+    (Pair (Abelian-Group S +)
+      (Pair (is-Assoc S *)
+        (Pair (Distributes-Left S + *)
+          (Distributes-Right S + *))))))
+
+(claim Ring-With-Unit-Element
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Ring-With-Unit-Element
+  (λ (S + *)
+    (Pair (Ring S + *)
+      (has-Identity S *))))
+
+(claim Commutative-Ring
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Commutative-Ring
+  (λ (S + *)
+    (Pair (Ring S + *)
+      (is-Comm S *))))
+
+(claim No-Proper-Divisors
+  (Π ([S U])
+    (-> (-> S S S) S U)))
+(define No-Proper-Divisors
+  (λ (S * z)
+    (Π ([x S]
+        [y S])
+      (-> (= S (* x y) z)
+          (Either (= S x z) (= S y z))))))
+
+(claim Integral-Domain
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Integral-Domain
+  (λ (S + *)
+    (Pair (Commutative-Ring S + *)
+      (Σ ([z S])
+        (No-Proper-Divisors S * z)))))
+|#
+(claim +-Has-Identity
+  (has-Identity Integer Plus))
+
+
+(define +-Has-Identity
+  (cons (Positive 0)
+    (λ (k)
+      (cons (+-zero-l k)
+        (+-zero-r k)))))
+
+(claim +-has-inverses
+  (has-Inverses Integer Plus +-Has-Identity))
+(define +-has-inverses
+  (λ (k)
+    (cons (Negate k)
+      (cons (+-inv-r-0 k)
+        (+-inv-l-0 k)))))
+(claim IntegersFormAGroup
+  (Group Integer Plus))
+(define IntegersFormAGroup
+  (cons +-assoc
+    (cons +-Has-Identity
+      +-has-inverses)))
+;; End of Document
+
+
+
+;; general TODOs
+
+;; TODO: show that Even/Odd and Positive/Negative are interchangeable across
+;; I and N. What is Even/Oddness in I?
+
+;; TODO: can we generalize what it means to go from a
+;; property on Nats to a property on Integers?
