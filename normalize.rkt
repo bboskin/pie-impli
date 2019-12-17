@@ -17,6 +17,13 @@
      (syntax/loc stx
        (PI 'x arg-t (HO-CLOS (λ (x) (Π-type (b ...) ret)))))]))
 
+;; New syntax for Πi
+(define-syntax (Πi-type stx)
+  (syntax-parse stx
+    [(_ () ret) (syntax/loc stx ret)]
+    [(_ ((x:id arg-t) b ...) ret)
+     (syntax/loc stx
+       (PIi 'x arg-t (HO-CLOS (λ (x) (Πi-type (b ...) ret)))))]))
 
 (: do-ap (-> Value Value Value))
 (define (do-ap rator-v rand-v)
@@ -300,6 +307,10 @@
        (PI x A-v (FO-CLOS ρ x B)))]
     [`(λ (,x) ,b)
      (LAM x (FO-CLOS ρ x b))]
+    [`(Πi ((,x ,A)) ,B)
+     (let ([A-v (val-of ρ A)])
+       (PIi x A-v (FO-CLOS ρ x B)))]
+    [`(λi ,b) (LAMi (val-of ρ b))]
     [`(let ((,x ,x-e)) ,b)
      (val-of (extend-env ρ x (val-of ρ x-e)) b)]
     [`(which-Nat ,tgt (the ,b-t ,b) ,s)
@@ -434,6 +445,13 @@
        `(Π ((,x^ ,A-e))
           ,(let ((Γ/x^ (bind-free Γ x^ A)))
              (read-back-type Γ/x^ (val-of-closure c (NEU A (N-var x^)))))))]
+    ;; new form for Πi
+    [(PIi x A c)
+     (let ((A-e (read-back-type Γ A))
+           (x^ (fresh Γ x)))
+       `(Πi ((,x^ ,A-e))
+          ,(let ((Γ/x^ (bind-free Γ x^ A)))
+             (read-back-type Γ/x^ (val-of-closure c (NEU A (N-var x^)))))))]
     ['ATOM 'Atom]
     [(SIGMA x A c)
      (let ((A-e (read-back-type Γ A))
@@ -472,6 +490,18 @@
               (bind-free Γ x^ A)
               (val-of-closure c (NEU A (N-var x^)))
               (do-ap f (NEU A (N-var x^)))))))]
+    [((PIi x A c) (LAMi b))
+     (let ([x^ (fresh Γ x)])
+       `(λi ,(read-back
+              (bind-free Γ x^ A)
+              (val-of-closure c (NEU A (N-var x^)))
+              b)))]
+    [((PIi x A c) f)
+     (let ((x^ (fresh Γ x)))
+       `(λi ,(read-back
+              (bind-free Γ x^ A)
+              (val-of-closure c (NEU A (N-var x^)))
+              (do-ap f (NEU A (N-var x^))))))]
     [((SIGMA x A c) p-v)
      (let ((the-car (do-car p-v)))
       `(cons ,(read-back Γ A the-car)
