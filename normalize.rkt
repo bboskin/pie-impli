@@ -1,6 +1,6 @@
 #lang typed/racket
 
-;;; normalize.rkt  
+;;; normalize.rkt
 ;;;
 ;;; This file implements normalization by evaluation.
 
@@ -9,6 +9,7 @@
 (require/typed "locations.rkt" (location->srcloc (-> Loc Srcloc)))
 (provide (all-defined-out))
 
+
 (define-syntax (Π-type stx)
   (syntax-parse stx
     [(_ () ret) (syntax/loc stx ret)]
@@ -16,13 +17,6 @@
      (syntax/loc stx
        (PI 'x arg-t (HO-CLOS (λ (x) (Π-type (b ...) ret)))))]))
 
-;; New syntax for Πi
-(define-syntax (Πi-type stx)
-  (syntax-parse stx
-    [(_ () ret) (syntax/loc stx ret)]
-    [(_ ((x:id arg-t) b ...) ret)
-     (syntax/loc stx
-       (PIi 'x arg-t (HO-CLOS (λ (x) (Πi-type (b ...) ret)))))]))
 
 (: do-ap (-> Value Value Value))
 (define (do-ap rator-v rand-v)
@@ -195,7 +189,7 @@
     [(SAME v)
      (SAME (do-ap fun-v v))]
     [(NEU (EQUAL A-v from-v to-v) ne)
-     (NEU (EQUAL A-v (do-ap fun-v from-v) (do-ap fun-v to-v))
+     (NEU (EQUAL B-v (do-ap fun-v from-v) (do-ap fun-v to-v))
           (N-cong ne (THE (Π-type ((x A-v)) B-v) fun-v)))]))
 
 (: do-symm (-> Value Value))
@@ -304,12 +298,10 @@
     [`(Π ((,x ,A)) ,B)
      (let ([A-v (val-of ρ A)])
        (PI x A-v (FO-CLOS ρ x B)))]
-    [`(Πi ((,x ,A)) ,B)
-     (let ([A-v (val-of ρ A)])
-       (PIi x A-v (FO-CLOS ρ x B)))]
     [`(λ (,x) ,b)
      (LAM x (FO-CLOS ρ x b))]
-    [`(λi ,b) (LAMi (val-of ρ b))]
+    [`(let ((,x ,x-e)) ,b)
+     (val-of (extend-env ρ x (val-of ρ x-e)) b)]
     [`(which-Nat ,tgt (the ,b-t ,b) ,s)
      (do-which-Nat (val-of ρ tgt)
                    (val-of ρ b-t)
@@ -442,13 +434,6 @@
        `(Π ((,x^ ,A-e))
           ,(let ((Γ/x^ (bind-free Γ x^ A)))
              (read-back-type Γ/x^ (val-of-closure c (NEU A (N-var x^)))))))]
-    ;; new form for Πi
-    [(PIi x A c)
-     (let ((A-e (read-back-type Γ A))
-           (x^ (fresh Γ x)))
-       `(Πi ((,x^ ,A-e))
-          ,(let ((Γ/x^ (bind-free Γ x^ A)))
-             (read-back-type Γ/x^ (val-of-closure c (NEU A (N-var x^)))))))]
     ['ATOM 'Atom]
     [(SIGMA x A c)
      (let ((A-e (read-back-type Γ A))
@@ -487,18 +472,6 @@
               (bind-free Γ x^ A)
               (val-of-closure c (NEU A (N-var x^)))
               (do-ap f (NEU A (N-var x^)))))))]
-    [((PIi x A c) (LAMi b))
-     (let ([x^ (fresh Γ x)])
-       `(λi ,(read-back
-              (bind-free Γ x^ A)
-              (val-of-closure c (NEU A (N-var x^)))
-              b)))]
-    [((PIi x A c) f)
-     (let ((x^ (fresh Γ x)))
-       `(λi ,(read-back
-              (bind-free Γ x^ A)
-              (val-of-closure c (NEU A (N-var x^)))
-              (do-ap f (NEU A (N-var x^))))))]
     [((SIGMA x A c) p-v)
      (let ((the-car (do-car p-v)))
       `(cons ,(read-back Γ A the-car)
@@ -526,8 +499,7 @@
     [((EITHER Lv Rv) (RIGHT rv))
      `(right ,(read-back Γ Rv rv))]
     [(_ (NEU _ ne))
-     (read-back-neutral Γ ne)]
-    ))
+     (read-back-neutral Γ ne)]))
 
 (: read-back-neutral (-> Ctx Neutral Core))
 (define (read-back-neutral Γ ne)
@@ -632,3 +604,25 @@
     [(FO-CLOS ρ x e)
      (val-of (extend-env ρ x v) e)]
     [(HO-CLOS fun) (fun v)]))
+
+
+
+;; Local Variables:
+;; eval: (put 'pmatch 'racket-indent-function 1)
+;; eval: (put 'vmatch 'racket-indent-function 1)
+;; eval: (put 'pmatch-who 'racket-indent-function 2)
+;; eval: (put 'primitive 'racket-indent-function 1)
+;; eval: (put 'derived 'racket-indent-function 0)
+;; eval: (put 'data-constructor 'racket-indent-function 1)
+;; eval: (put 'type-constructor 'racket-indent-function 1)
+;; eval: (put 'tests-for 'racket-indent-function 1)
+;; eval: (put 'hole 'racket-indent-function 1)
+;; eval: (put 'Π 'racket-indent-function 1)
+;; eval: (put 'Π* 'racket-indent-function 2)
+;; eval: (put 'PI* 'racket-indent-function 1)
+;; eval: (put 'Σ 'racket-indent-function 1)
+;; eval: (put (intern "?") 'racket-indent-function 1)
+;; eval: (put 'trace-type-checker 'racket-indent-function 1)
+;; eval: (put 'go-on 'racket-indent-function 1)
+;; eval: (setq whitespace-line-column 70)
+;; End:
