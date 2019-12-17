@@ -129,7 +129,7 @@
         (No-Proper-Divisors S * z)))))
 
 
-;; TODO define unit element, field
+;; define unit element, field
 
 ; set naming conventions?
 
@@ -153,6 +153,17 @@
 (claim Zero Integer)
 (define Zero (Positive 0))
 
+(claim which-Int
+  (Π ([S U])
+    (-> Integer (-> Nat S) (-> Nat S)
+        S)))
+(define which-Int
+  (λ (S t l r)
+    (ind-Either t
+      (λ (t) S)
+      (λ (neg) (l neg))
+      (λ (pos) (l pos)))))
+
 (claim succ (-> Nat Nat))
 (define succ (λ (x) (add1 x)))
 (claim succ2 (-> Nat Nat))
@@ -165,14 +176,7 @@
   (λ (j k) (iter-Nat j zero (plus k))))
 
 
-#|
-real quick, proofs just about the natural # fns
-|#
-(claim +-add1-r
-  (Π ([k Nat]
-      [j Nat])
-    (= Nat (add1 (plus k j)) (plus k (add1 j)))))
-(define +-add1-r TODO)
+
 (claim abs (-> Integer Nat))
 (define abs
   (λ (j)
@@ -211,7 +215,6 @@ real quick, proofs just about the natural # fns
       (λ (_) Integer)
       (λ (neg) (Positive (add1 neg)))
       (λ (pos) (Negative pos)))))
-
 
 (claim Nat->Int (-> Nat Integer))
 (define Nat->Int
@@ -311,50 +314,58 @@ real quick, proofs just about the natural # fns
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Equality of Integers
+(claim Nat=-conseq
+  (-> Nat Nat U))
+(define Nat=-conseq
+  (λ (j k)
+    (which-Nat j
+               (which-Nat k
+                          Trivial
+                          (λ (_) Absurd))
+               (λ (j-1)
+                 (which-Nat k
+                            Absurd
+                            (λ (k-1) (= Nat j-1 k-1)))))))
 
+(claim Nat=-conseq-same
+  (Π ([k Nat])
+    (Nat=-conseq k k)))
+(define Nat=-conseq-same
+  (λ (k)
+    (ind-Nat k
+      (λ (k) (Nat=-conseq k k))
+      sole
+      (λ (k-1 IH)
+        (same k-1)))))
+
+(claim use-Nat=
+  (Π ([j Nat]
+      [k Nat])
+    (-> (= Nat j k)
+      (Nat=-conseq j k))))
+(define use-Nat=
+  (λ (j k j=k)
+    (replace j=k
+             (λ (?) (Nat=-conseq j ?))
+             (Nat=-conseq-same j))))
+
+;; now, defining int= based on nat= and the defined isomorphism
 (claim Int=-conseq
   (-> Integer Integer U))
 (define Int=-conseq
   (λ (k j)
-    (which-Either k
-      (the (-> Nat U)
-        (λ (neg-k)
-          (the U
-            (which-Either j
-              (the (-> Nat U)
-                (λ (neg-j)
-                 (the U (which-Nat neg-k
-                    (which-Nat neg-j Trivial (λ (_) Absurd))
-                    (λ (neg-k-1) (which-Nat neg-j Absurd (λ (neg-j-1) (= Integer (Negative neg-k-1) (Negative neg-j-1)))))))))
-              (the (-> Nat U) (λ (pos-j) Absurd))))))
-      TODO #;(the (-> Nat U)
-        (λ (pos-k)
-          (which-Either j
-            (λ (neg-j) Absurd)
-            (λ (pos-j)
-              (which-Nat pos-k
-                (which-Nat pos-j Trivial (λ (_) Absurd))
-                (λ (pos-k-1) (which-Nat pos-j Absurd (λ (pos-j-1) (= Integer (Positive pos-k-1) (Positive pos-j-1)))))))))))))
+    (Nat=-conseq (Int->Nat k) (Int->Nat j))))
 
 (claim Int=-conseq-same
   (Π ([k Integer])
     (Int=-conseq k k)))
 (define Int=-conseq-same
   (λ (k)
-    (ind-Either k
-      (λ (k) (Int=-conseq k k))
-      (λ (neg)
-        (ind-Nat neg
-          (λ (neg) (Int=-conseq (Negative neg) (Negative neg)))
-          sole
-          (λ (neg-1 IH)
-            (same (Negative neg-1)))))
-      (λ (pos)
-        (ind-Nat pos
-          (λ (pos) (Int=-conseq (Positive pos) (Positive pos)))
-          sole
-          (λ (pos-1 IH)
-            (same (Positive pos-1))))))))
+    (ind-Nat (Int->Nat k)
+      (λ (n) (Nat=-conseq n n))
+      sole
+      (λ (n-1 IH)
+        (same n-1)))))
 
 (claim use-Int=
   (Π ([k Integer]
@@ -362,10 +373,10 @@ real quick, proofs just about the natural # fns
     (-> (= Integer k j)
         (Int=-conseq k j))))
 (define use-Int=
-  (λ (k j pf)
-    (replace pf
-      (λ (?) (Int=-conseq k ?))
-      (Int=-conseq-same k))))
+  (λ (k j j=k)
+    (replace j=k
+             (λ (?) (Int=-conseq k ?))
+             (Int=-conseq-same k))))
 
 ;; Functions used to define Integer addition and multiplication
 
@@ -540,51 +551,43 @@ real quick, proofs just about the natural # fns
           (Positive 0)
           (IntPlus k))))))
 
-;; correctness proofs for + and * showing a correspondence between Integers and Nats
 
-#;(claim +-correct
-  (Π ([k Integer]
-      [j Integer])
-    (= Nat
-       (Int->Nat (IntPlus k j))
-       (plus (Int->Nat k) (Int->Nat j)))))
-#;(define +-correct
-  (λ (k j)
-    (ind-Either k
-      (λ (k) (= Nat
-               (Int->Nat (IntPlus k j))
-               (plus (Int->Nat k) (Int->Nat j))))
-      (λ (neg)
-        (ind-Nat neg
-          (λ (neg)
-            (= Nat
-              (Int->Nat (IntPlus (Negative neg) j))
-              (plus (Int->Nat (Negative neg)) (Int->Nat j))))
-          (equal Nat
-            (Int->Nat (Intsub1 j))
-            #:by TODO
-            (add1 (Int->Nat j)))
-          (λ (neg-1 IH)
-            TODO)))
-      (λ (pos) TODO))))
+(claim pos-plus-pos=nat+nat
+  (Π ([k Nat]
+      [j Nat])
+    (= Integer (IntPlus (Positive k) (Positive j))
+       (Positive (plus k j)))))
+(define pos-plus-pos=nat+nat
+  TODO)
 
-(claim *-correct
-  (Π ([k Integer]
-      [j Integer])
-    (= Nat
-       (Int->Nat (IntTimes k j))
-       (times (Int->Nat k) (Int->Nat j)))))
-(define *-correct
-  (λ (k j)
-    (ind-Either k
-      (λ (k) (= Nat
-               (Int->Nat (IntTimes k j))
-               (times (Int->Nat k) (Int->Nat j))))
-      (λ (neg) TODO)
-      (λ (pos) TODO))))
+(claim pos-times-pos=nat*nat
+  (Π ([k Nat]
+      [j Nat])
+    (= Integer (IntTimes (Positive k) (Positive j))
+       (Positive (times k j)))))
+(define pos-times-pos=nat*nat
+  TODO)
+
+(claim neg-times-neg=nat+1*nat+1
+  (Π ([k Nat]
+      [j Nat])
+    (= Integer (IntTimes (Negative k) (Negative j))
+       (Positive (times (add1 k) (add1 j))))))
+(define neg-times-neg=nat+1*nat+1
+  TODO)
+
+(claim pos-times-neg-is-negative
+  (Π ([k Nat]
+      [j Nat])
+    (Σ ([n Nat])
+       (= Integer (IntTimes (Positive k) (Negative j))
+          (Negative n)))))
+(define pos-times-neg-is-negative
+  TODO)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; proofs about addition
-#|
+
 
 ;; Proof that zero is an identity on the left and right
 (claim +-zero-l
@@ -613,10 +616,10 @@ real quick, proofs just about the natural # fns
           (λ (pos-1 ans)
             (cong ans Intadd1)))))))
 
-#;
+
 (claim +-Has-Identity
   (has-Identity Integer IntPlus))
-#;
+
 (define +-Has-Identity
   (cons (Positive 0)
     (λ (k)
@@ -1058,26 +1061,26 @@ real quick, proofs just about the natural # fns
               #:by (cong (+-inv-same-negative-1 pos-1) Intadd1)
               (Positive 0))))))))
 
-#;(claim +-has-inverses
+(claim +-has-inverses
   (has-Inverses Integer IntPlus +-Has-Identity))
-#;(define +-has-inverses
+(define +-has-inverses
   (λ (k)
     (cons (Negate k)
       (cons (+-inv-r-0 k)
         (+-inv-l-0 k)))))
 
 ;; putting it all together to prove the group property of Integers under +
-#;(claim IntegersFormAGroup
+(claim IntegersFormAGroup
   (Group Integer IntPlus))
-#;(define IntegersFormAGroup
+(define IntegersFormAGroup
   (cons +-assoc
     (cons +-Has-Identity
       +-has-inverses)))
 
 ;; abelian, too
-#;(claim IntPlusIsAnAbelianGroup
+(claim IntPlusIsAnAbelianGroup
   (Abelian-Group Integer IntPlus))
-#;(define IntPlusIsAnAbelianGroup
+(define IntPlusIsAnAbelianGroup
   (cons IntegersFormAGroup
     +-comm))
 
@@ -1783,86 +1786,45 @@ real quick, proofs just about the natural # fns
       *-comm-neg
       *-comm-pos)))
 
-#;
+
+
 (claim Integers-Form-A-Ring
   (Ring Integer IntPlus IntTimes))
-#;(define Integers-Form-A-Ring
+(define Integers-Form-A-Ring
   (cons IntPlusIsAnAbelianGroup
     (cons *-assoc
       (cons *-dist-l
         *-dist-r))))
-#;
+
 (claim Integers-Form-A-Ring-With-Unit-Element
   (Ring-With-Unit-Element Integer IntPlus IntTimes))
-#;(define Integers-Form-A-Ring-With-Unit-Element
+(define Integers-Form-A-Ring-With-Unit-Element
   (cons Integers-Form-A-Ring
     (cons (Positive 1)
       (λ (k)
         (cons (*-1-id-l k)
           (*-1-id-r k))))))
 
-#;(claim Integers-Form-A-Commutative-Ring
+(claim Integers-Form-A-Commutative-Ring
   (Commutative-Ring Integer IntPlus IntTimes))
-#;(define Integers-Form-A-Commutative-Ring
+(define Integers-Form-A-Commutative-Ring
   (cons Integers-Form-A-Ring
     *-comm))
 
-#|
-(claim No-Proper-Divisors
-  (Π ([S U])
-    (-> (-> S S S) S U)))
-(define No-Proper-Divisors
-  (λ (S * z)
-    (Π ([x S]
-        [y S])
-      (-> (= S (* x y) z)
-          (Either (= S x z) (= S y z))))))
-|#
-
-#|table describing Int=-conseq
-
-                  Nj+1    N0    P0     Pj+1
-(Negative k+1)   Nk=Nj  Absurd Absurd  Absurd
-(Negative 0)    Absurd  Trivial
-(Positive 0)    Absurd         Trivial
-(Positive k+1)  Absurd                  Pk=Pj
-|#
-
-;; Proof that the multiplication of two non-zero positives is a non-zero positive
-(claim Pk+1*Pj+1=Pn+1
-  (Π ([k Nat]
-      [j Nat])
+(claim nat-of-negative-nonzero
+  (Π ([k Nat])
     (Σ ([n Nat])
-       (= Integer (IntTimes (Positive (add1 k)) (Positive (add1 j)))
-          (Positive (add1 n))))))
-(define Pk+1*Pj+1=Pn+1
-  TODO)
-;; Proof the the multiplication of two negatives is a non-zero positive
-(claim Nk*Nj=Pn+1
-  (Π ([k Nat]
-      [j Nat])
-    (Σ ([n Nat])
-       (= Integer (IntTimes (Negative k) (Negative j))
-          (Positive (add1 n))))))
-(define Nk*Nj=Pn+1
-  TODO)
-;; Proof that the multiplication of a non-zero positive and a negative is a negative
-(claim Pk+1*Nj=Pn+1
-  (Π ([k Nat]
-      [j Nat])
-    (Σ ([n Nat])
-       (= Integer (IntTimes (Positive (add1 k)) (Negative j))
-          (Negative n)))))
-(define Pk+1*Nj=Pn+1
-  (λ (k j)
+       (= Nat (Int->Nat (Negative k)) (add1 n)))))
+(define nat-of-negative-nonzero
+  (λ (k)
     (ind-Nat k
       (λ (k)
         (Σ ([n Nat])
-          (= Integer (IntTimes (Positive (add1 k)) (Negative j))
-             (Negative n))))
-      (cons j (*-1-id-l (Negative j)))
+          (= Nat (Int->Nat (Negative k)) (add1 n))))
+      (cons 0 (same 1))
       (λ (k-1 IH)
-        TODO))))
+        (cons (add1 (add1 (car IH)))
+          (cong (cdr IH) succ2))))))
 
 (claim Posk+1*Negj=0->Absurd
   (Π ([k Nat]
@@ -1870,8 +1832,25 @@ real quick, proofs just about the natural # fns
     (-> (= Integer (IntTimes (Positive (add1 k)) (Negative j)) (Positive 0))
         Absurd)))
 (define Posk+1*Negj=0->Absurd
-  (λ (k j)
-    TODO))
+  (λ (k j pf)
+    ((the (Π ([pr1 (Σ ([n Nat]) (= Integer (IntTimes (Positive (add1 k)) (Negative j))
+                                   (Negative n)))])
+            Absurd)
+       (λ (pr1)
+         ((the (-> (Σ ([n2 Nat]) (= Nat (Int->Nat (Negative (car pr1)))
+                                 (add1 n2)))
+                 Absurd)
+            (λ (pr2)
+              (use-Nat=
+                (add1 (car pr2))
+                0
+                (trans
+                  (symm (cdr pr2))
+                  (cong (trans (symm (cdr pr1)) pf)
+                    Int->Nat)))))
+           (nat-of-negative-nonzero (car pr1)))))
+      (pos-times-neg-is-negative (add1 k) j))))
+
 
 (claim Posk+1*Posj+1=0->Absurd
   (Π ([k Nat]
@@ -1879,8 +1858,16 @@ real quick, proofs just about the natural # fns
     (-> (= Integer (IntTimes (Positive (add1 k)) (Positive (add1 j))) (Positive 0))
         Absurd)))
 (define Posk+1*Posj+1=0->Absurd
-  (λ (k j)
-    TODO))
+  (λ (k j pf)
+    (use-Int=
+      (Positive (times (add1 k) (add1 j)))
+      (Positive 0)
+      (equal Integer
+        (Positive (times (add1 k) (add1 j)))
+        #:by (symm (pos-times-pos=nat*nat (add1 k) (add1 j)))
+        (IntTimes (Positive (add1 k)) (Positive (add1 j)))
+        #:by pf
+        (Positive 0)))))
 
 (claim Negk*Negj=0->Absurd
   (Π ([k Nat]
@@ -1889,7 +1876,50 @@ real quick, proofs just about the natural # fns
         Absurd)))
 (define Negk*Negj=0->Absurd
   (λ (k j)
-    TODO))
+    (ind-Nat k
+      (λ (k)
+        (-> (= Integer (IntTimes (Negative k) (Negative j)) (Positive 0))
+          Absurd))
+      (λ (pf) (use-Int= (Negate (Negative j)) (Positive 0) pf))
+      (λ (k-1 IH pf)
+        (use-Nat=
+          (add1 (add1 (Int->Nat (Positive (plus j (times (add1 k-1) (add1 j)))))))
+          0
+          (equal Nat
+            (add1 (add1 (Int->Nat (Positive (plus j (times (add1 k-1) (add1 j)))))))
+            #:by (cong (symm (neg-times-neg=nat+1*nat+1 (add1 k-1) j)) Int->Nat)
+            (Int->Nat (IntTimes (Negative (add1 k-1)) (Negative j)))
+            #:by (cong pf Int->Nat)
+            0))))))
+
+
+(claim negate=0->x=0
+  (Π ([k Integer])
+    (-> (= Integer (Negate k) (Positive 0))
+        (= Integer k (Positive 0)))))
+(define negate=0->x=0
+  (λ (k)
+    (ind-Either k
+      (λ (k)
+        (-> (= Integer (Negate k) (Positive 0))
+          (= Integer k (Positive 0))))
+      (λ (neg p)
+        (ind-Absurd (use-Int= (Positive (add1 neg)) (Positive 0) p)
+          (= Integer (Negative neg) (Positive 0))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (k)
+            (-> (= Integer (Negate (Positive k)) (Positive 0))
+              (= Integer (Positive k) (Positive 0))))
+          (λ (p) (same (Positive 0)))
+          (λ (pos-1 IH p)
+            ((the (-> (Σ ([n Nat]) (= Nat (Int->Nat (Negative pos-1)) (add1 n)))
+                     (= Integer (Positive (add1 pos-1)) (Positive 0)))
+              (λ (pf)
+                (ind-Absurd (use-Nat= (add1 (car pf)) 0 (trans (symm (cdr pf)) (cong p Int->Nat)))
+                  (= Integer (Positive (add1 pos-1)) (Positive 0)))))
+              (nat-of-negative-nonzero pos-1))))))))
+
 
 (claim Neg*x=0->x=0
   (Π ([k Nat]
@@ -1909,7 +1939,7 @@ real quick, proofs just about the natural # fns
               (= Integer (Negative k) (Positive 0))
               (= Integer x (Positive 0))))))
       (λ (x -1*x=0)
-        TODO)
+        (right (negate=0->x=0 x -1*x=0)))
       (λ (k-1 IH x)
         (ind-Either x
           (λ (x)
@@ -1998,15 +2028,28 @@ real quick, proofs just about the natural # fns
         (Neg*x=0->x=0 neg y x*y=0))
       (λ (pos y x*y=0)
         (Pos*x=0->x=0 pos y x*y=0)))))
+
+#|
+
+(claim Integral-Domain
+  (Π ([S U])
+    (-> (-> S S S) (-> S S S) U)))
+(define Integral-Domain
+  (λ (S + *)
+    (Pair (Commutative-Ring S + *)
+      (Σ ([z S])
+        (No-Proper-Divisors S * z)))))
+
 |#
-#;(claim Integers-Form-An-Integral-Domain
+(claim Integers-Form-An-Integral-Domain
   (Integral-Domain Integer IntPlus IntTimes))
 
 
 
-#;(define Integers-Form-An-Integral-Domain
+(define Integers-Form-An-Integral-Domain
   (cons Integers-Form-A-Commutative-Ring
-    TODO))
+    (cons Zero
+      Zero-Has-No-Proper-Divisors)))
 
 ;; stuff for KFG
 #|

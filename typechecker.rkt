@@ -559,37 +559,6 @@
        (go-on ((L-out (check Γ r L 'UNIVERSE))
                (R-out (check Γ r R 'UNIVERSE)))
               (go `(the U (Either ,L-out ,R-out))))]
-      #;[`(which-Either ,tgt ,on-left ,on-right)
-       (go-on ((`(the ,tgt-t ,tgt-out) (synth Γ r tgt)))
-              (match (val-in-ctx Γ tgt-t)
-                [(EITHER Lv Rv)
-                 (let ([x^ (fresh Γ 'x)])
-                   (go-on ((`(the ,l-ty ,l-out) (synth Γ r on-left))
-                           (`(the ,r-ty ,r-out) (synth Γ r on-right)))
-                          (match* ((val-in-ctx Γ l-ty) (val-in-ctx Γ r-ty))
-                            [((PI x Bv c1) (PI y Cv c2))
-                             (go-on ((_ (same-type Γ (src-loc e) Bv Lv))
-                                     (_ (same-type Γ (src-loc e) Cv Rv))
-                                     (Ty1 (go (val-of-closure c1 (val-of (ctx->env Γ) x))))
-                                     (Ty2 (go (val-of-closure c2 (val-of (ctx->env Γ) y))))
-                                     (_ (same-type Γ (src-loc e) Ty1 Ty2)))
-                                    (go `(the ,(read-back-type Γ Ty1)
-                                              (which-Either (the ,tgt-t ,tgt-out)
-                                                  (the ,l-ty ,l-out)
-                                                  (the ,r-ty ,r-out)))))]
-                            [(non-Pi non-Pi)
-                             (stop (src-loc e) `("Expected a function, got" ,(read-back-type Γ non-Pi)))])
-                          #;(if (α-equiv? l-ty r-ty)
-                              (go `(the ,(read-back-type Γ (do-ap (val-in-ctx Γ l-ty) (value-of Γ l-out)))
-                                    (which-Either ,tgt-out
-                                                  (the ,l-ty ,l-out)
-                                                  (the ,r-ty ,r-out))))
-                              (stop (src-loc e)
-                                    `("Expected two equivalent types, got" ,l-ty "and" ,r-ty)))))]
-                [non-Either
-                 (stop (src-loc e)
-                       `("Expected an Either, but got a"
-                         ,(read-back-type Γ non-Either)))]))]
       [`(ind-Either ,tgt ,mot ,on-left ,on-right)
        (go-on ((`(the ,tgt-t ,tgt-out) (synth Γ r tgt)))
               (match (val-in-ctx Γ tgt-t)
