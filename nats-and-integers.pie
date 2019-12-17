@@ -129,9 +129,9 @@
         (No-Proper-Divisors S * z)))))
 
 
-;; define unit element, field
+;; define field?
 
-; set naming conventions?
+; set naming conventions? doing it in the new file
 
 ;; trying to prove that the Integers are a group under +
 ;; an integer is a sum type, where negatives are in the left and positives are the right.
@@ -153,16 +153,47 @@
 (claim Zero Integer)
 (define Zero (Positive 0))
 
+
+;; which-Int and ind-Int not used in this file
 (claim which-Int
-  (Π ([S U])
-    (-> Integer (-> Nat S) (-> Nat S)
+  (Π ([_ Integer]
+      [S U])
+    (-> (-> Nat S) (-> Nat S)
         S)))
 (define which-Int
-  (λ (S t l r)
+  (λ (t S l r)
     (ind-Either t
-      (λ (t) S)
+      (λ (_) S)
       (λ (neg) (l neg))
-      (λ (pos) (l pos)))))
+      (λ (pos) (r pos)))))
+
+(claim ind-Int
+  (Π ([k Integer]
+      [mot (-> Integer U)])
+    (-> (Π ([k Nat]) (mot (Negative k)))
+        (Π ([k Nat]) (mot (Positive k)))
+        (mot k))))
+(define ind-Int
+  (λ (t m l r)
+    (ind-Either t m l r)))
+#|
+;; never used
+(claim abs (-> Integer Nat))
+(define abs
+  (λ (j)
+    (ind-Either j
+      (λ (_) Nat)
+      succ
+      (Id Nat))))
+
+(claim Abs (-> Integer Integer))
+(define Abs
+  (λ (j)
+    (ind-Either j
+      (λ (_) Integer)
+      (λ (neg) (Positive (add1 neg)))
+      (λ (pos) (Positive pos)))))
+|#
 
 (claim succ (-> Nat Nat))
 (define succ (λ (x) (add1 x)))
@@ -186,22 +217,6 @@
       (λ (k) (= Nat (plus k 0) k))
       (same 0)
       (λ (k-1 IH) (cong IH succ)))))
-
-(claim abs (-> Integer Nat))
-(define abs
-  (λ (j)
-    (ind-Either j
-      (λ (_) Nat)
-      succ
-      (Id Nat))))
-
-(claim Abs (-> Integer Integer))
-(define Abs
-  (λ (j)
-    (ind-Either j
-      (λ (_) Integer)
-      (λ (neg) (Positive (add1 neg)))
-      (λ (pos) (Positive pos)))))
 
 (claim Int->Nat (-> Integer Nat))
 (define Int->Nat
@@ -324,8 +339,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Equality of Integers
-(claim Nat=-conseq
-  (-> Nat Nat U))
+(claim Nat=-conseq (-> Nat Nat U))
 (define Nat=-conseq
   (λ (j k)
     (which-Nat j
@@ -560,7 +574,6 @@
         (iter-Nat pos
           (Positive 0)
           (IntPlus k))))))
-
 
 (claim pos-plus-pos=nat+nat
   (Π ([k Nat]
@@ -950,31 +963,7 @@
       +-sub1-r-neg
       +-sub1-r-pos)))
 
-;; proof that * with -1 on the right is negation
-(claim flip-is-negate
-  (Π ([k Integer])
-    (= Integer (IntTimes k (Negative 0)) (Negate k))))
-(define flip-is-negate
-  (λ (k)
-    (ind-Either k
-      (λ (k) (= Integer (IntTimes k (Negative 0)) (Negate k)))
-      (λ (neg)
-        (ind-Nat neg
-          (λ (neg) (= Integer (IntTimes (Negative neg) (Negative 0)) (Negate (Negative neg))))
-          (same (Positive 1))
-          (λ (neg-1 IH)
-            (cong IH Intadd1))))
-      (λ (pos)
-        (ind-Nat pos
-          (λ (pos) (= Integer (IntTimes (Positive pos) (Negative 0)) (Negate (Positive pos))))
-          (same (Positive 0))
-          (λ (pos-1 IH)
-            (equal Integer
-              (Intsub1 (IntTimes (Positive pos-1) (Negative 0)))
-              #:by (cong IH Intsub1)
-              (Intsub1 (Negate (Positive pos-1)))
-              #:by (symm (negate-add1-swap (Positive pos-1)))
-              (Negate (Positive (add1 pos-1))))))))))
+
 
 ;; proof that + is commutative
 
@@ -1191,6 +1180,32 @@
                          (Negate (IntPlus k (Negate j))))))
               (Negate (IntPlus (Negative pos-1) (Negate j))))))))))
 
+
+;; proof that * with -1 on the right is negation
+(claim flip-is-negate
+  (Π ([k Integer])
+    (= Integer (IntTimes k (Negative 0)) (Negate k))))
+(define flip-is-negate
+  (λ (k)
+    (ind-Either k
+      (λ (k) (= Integer (IntTimes k (Negative 0)) (Negate k)))
+      (λ (neg)
+        (ind-Nat neg
+          (λ (neg) (= Integer (IntTimes (Negative neg) (Negative 0)) (Negate (Negative neg))))
+          (same (Positive 1))
+          (λ (neg-1 IH)
+            (cong IH Intadd1))))
+      (λ (pos)
+        (ind-Nat pos
+          (λ (pos) (= Integer (IntTimes (Positive pos) (Negative 0)) (Negate (Positive pos))))
+          (same (Positive 0))
+          (λ (pos-1 IH)
+            (equal Integer
+              (Intsub1 (IntTimes (Positive pos-1) (Negative 0)))
+              #:by (cong IH Intsub1)
+              (Intsub1 (Negate (Positive pos-1)))
+              #:by (symm (negate-add1-swap (Positive pos-1)))
+              (Negate (Positive (add1 pos-1))))))))))
 
 ;; proof that multiplication has 1 as an identity
 
@@ -1410,6 +1425,7 @@
 #|
 (k+1)*j=j+(k*j)
 |#
+
 (define *-add1-dist-l
   (λ (k j)
     (ind-Either k
