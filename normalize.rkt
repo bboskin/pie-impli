@@ -275,7 +275,6 @@
                            b-v)
                       (THE (ind-Vec-step-type Ev mot-v) s-v)))]))
 
-
 (: do-ind-Either (-> Value Value Value Value Value))
 (define (do-ind-Either tgt mot l r)
   (match tgt

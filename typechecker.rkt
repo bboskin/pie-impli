@@ -171,8 +171,7 @@
   (define the-expr
     (match (src-stx e)
       ['Nat (go `(the U Nat))]
-      ['U #;(go `(the U U))
-          (stop (src-loc e)
+      ['U (stop (src-loc e)
                 `(U
                   "is a type, but it does not have a type."))]
       [`(-> ,A ,B)
