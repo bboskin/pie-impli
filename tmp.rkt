@@ -1,5 +1,9 @@
 PIi LINES FROM TYPECHECKER.RKT
 
+(require/typed "inference.rkt"
+               [solve (-> Core Core (U Core #f))]
+               [solve-arg (-> Core Core Core (U (Listof Core) #f))])
+
 ;; is-type
 
 ;;;;;;;;;;;;;;;;;;;;;

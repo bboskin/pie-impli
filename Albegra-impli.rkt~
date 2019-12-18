@@ -1977,19 +1977,19 @@ And if THAT doesn't work, we can try to prove it directly
 
 ;; Abstract Algebras
 (claim Group
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) U)))
 (define Group
-  (λi (λ (f)
-        (Pair (is-Assoc S f)
-          (Σ ([e (has-Identity S f)])
-            (has-Inverses S f e))))))
+  (λ (S f)
+    (Pair (is-Assoc S f)
+      (Σ ([e (has-Identity S f)])
+        (has-Inverses S f e)))))
 
 (claim Abelian-Group
   (Π ([S U]) (-> (-> S S S) U)))
 (define Abelian-Group
   (λ (S f)
-    (Pair (Group f)
+    (Pair (Group S f)
       (is-Comm S f))))
 
 (claim Ring
@@ -2048,7 +2048,7 @@ And if THAT doesn't work, we can try to prove it directly
       (cons (+-inv-r-0 k)
         (+-inv-l-0 k)))))
 (claim IntegersFormAGroup
-  (Group Plus))
+  (Group Integer Plus))
 (define IntegersFormAGroup
   (cons +-assoc
     (cons +-Has-Identity

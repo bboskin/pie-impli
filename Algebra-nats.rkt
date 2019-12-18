@@ -1,4 +1,4 @@
-#lang pie-impli
+#lang pie-a-let-mode
 
 #|
 This file implements proofs about the system of Integers, with standard + and *, (called I)
@@ -29,6 +29,8 @@ There are 3 versions of this document, written in 3 different implementations of
    This work was done largely during my last semester at IU, as a research project together with Jeremy Siek.
    
     (no guarantees on what it will find, but it cleans up the Algebra work nicely :))
+
+(This is actually a secret 4th versions where I try to prove everything just using Nats! let's hope it works)
 
 TODOs
    - eliminate all evidence of let from pie-impli
@@ -315,9 +317,10 @@ zero    | Trivial |   Absurd
 
 #|
 Can we make a system like this for Int? We'd like one that started like this
+
 (claim Int=-conseq (-> Integer Integer U))
 (define Int=-conseq
-  (λ (j k) (which-Int j U ..)))
+  (λ (j k) (which-Int j U ...)))
 
 But, U is not a U, and we don't have a hierarchical universe. so we simply can't
 go down that road without changing the logical system.
@@ -374,15 +377,7 @@ consequences of Integer equality from our work with Nat equality
       (λ (k-1 _)
         (use-Int= (Negative (add1 k-1)) (Positive 0))))))
 
-;; TODO prove that the negatives and the positives are disjoint
 
-(claim Neg-Pos-Disjoint
-  (Π ([k Nat]
-      [j Nat])
-    (-> (= Integer (Negative k) (Positive j))
-        Absurd)))
-(define Neg-Pos-Disjoint
-  TODO)
 
 ;; TODO remove this everywhere?
 ;; here's the old style (kinda ugly) with its original name. try to get rid of it later?
@@ -400,6 +395,7 @@ consequences of Integer equality from our work with Nat equality
       (λ (k-1 IH)
         (cons (add1 (add1 (car IH)))
           (cong (cdr IH) succ2))))))
+
 
 
 ;; TODO add more and more proofs involving just equality here.
@@ -636,6 +632,89 @@ consequences of Integer equality from our work with Nat equality
           (Negative (add1 (plus j k)))))
       (same (Negative (add1 k)))
       (λ (_ IH) (cong IH Sub1)))))
+
+
+;; TODO prove that the negatives and the positives are disjoint
+
+#|
+In order to prove this, we're going to describe even-and-oddness
+on the nats, in order to describe how we can tell the difference
+between an encoded positive and encoded negative.
+We will create a
+(Π ([x Nat]
+    [y Nat])
+  (-> (Odd x) (Even y) (= Nat x y)
+   Absurd))
+|#
+
+
+(claim Even (-> Nat U))
+(define Even
+  (λ (k)
+    (Σ ([n Nat])
+      (= Nat k (plus n n)))))
+(claim Odd (-> Nat U))
+(define Odd
+  (λ (k)
+    (Σ ([n Nat])
+      (= Nat k (add1 (plus n n))))))
+
+(claim Even-Or-Odd
+  (Π ([k Nat])
+    (Either (Even k)
+            (Odd k))))
+(define Even-Or-Odd
+  (λ (k)
+    TODO))
+
+(claim Even-Xor-Odd
+  (Π ([k Nat])
+    (-> (Even k) (Odd k)
+        Absurd)))
+(define Even-Xor-Odd
+  (λ (k Ek Ok)
+    TODO))
+
+(claim Neg-Pos-Disjoint
+  (Π ([j Nat]
+      [k Nat])
+    (-> (= Integer (Negative j) (Positive k))
+        Absurd)))
+(define Neg-Pos-Disjoint
+  (λ (j k)
+    (ind-Nat k
+     (λ (k)
+       (-> (= Integer (Negative j) (Positive k))
+         Absurd))
+     (Neg->Nat-is-Nonzero j)
+     (λ (k-1 IH p)
+       ((the (-> (Σ ([n Nat])
+                   (= Nat
+                      (Int->Nat (Negative j))
+                      (add1 n)))
+               Absurd)
+          (λ (pr)
+            TODO #;(use-Nat=
+              (add1 (Int->Nat (Negative j)))
+              (add1 (Int->Nat (Positive k-1)))
+              TODO #;(use-Int= (Positive (add1 k-1)) (Negative j) (symm p)))))
+         (nat-of-negative-nonzero j))
+       #;
+       (ind-Nat j
+         (λ (j)
+           (-> (= Integer (Negative j)
+                 (Positive (add1 k-1)))
+             Absurd))
+         (λ (p)
+           (use-Nat=
+             0
+             (add1 (Int->Nat (Positive k-1)))
+             (use-Int= (Negative 0) (Positive (add1 k-1)) p)))
+         (λ (j-1 _ p)
+           (IH (fff (Negative j) (Positive k-1) (use-Nat=
+             (add1 (Int->Nat (Negative j-1)))
+             (add1 (Int->Nat (Positive k-1)))
+             (use-Int= (Negative (add1 j-1)) (Positive (add1 k-1)) p))))))))))
 
 ;; TODO define + on encoded integers, and prove
 ;; expected result for Plus on mixed-signs.
@@ -1137,7 +1216,7 @@ And if THAT doesn't work, we can try to prove it directly
               (Positive 0))))))))
 
 ;;;;;; OKAY, time for *
-
+#|
 (claim times (-> Nat Nat Nat))
 (define times
   (λ (j k) (iter-Nat j zero (plus k))))
@@ -2320,3 +2399,4 @@ And if THAT doesn't work, we can try to prove it directly
 
 ;; TODO: can we generalize what it means to go from a
 ;; property on Nats to a property on Integers?
+|#
