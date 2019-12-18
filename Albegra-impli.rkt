@@ -136,7 +136,7 @@ Capitals for Integers, as much as possible, when the distinction is obvious
         (iter-Nat pos 0 succ2)))))
 
 ;; To get an Int back from a Nat, we need a correspondant to succ for Integers. 
-
+#|
 (claim Succ (-> Integer Integer))
 (define Succ
   (λ (k)
@@ -2320,3 +2320,4 @@ And if THAT doesn't work, we can try to prove it directly
 
 ;; TODO: can we generalize what it means to go from a
 ;; property on Nats to a property on Integers?
+|#
