@@ -49,6 +49,9 @@
     [(_ `(Πi ([,x ,A]) ,B))
      `(Πi ([,x ,(restore-Πi A A arg fp)])
           ,(restore-Πi new-exp B arg fp))]
+    [(`(Either ,L1 ,R1) `(Either ,L2 ,R2))
+     `(Either ,(restore-Πi L1 L2 arg fp)
+              ,(restore-Πi R1 R2 arg fp))]
     ;; more non-type expressions
     [(`(the ,T1 ,e1) `(the ,T2 ,e2))
      `(the ,(restore-Πi T1 T2 arg fp)
