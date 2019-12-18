@@ -2,7 +2,7 @@
 
 
 (require racket/engine
-         "mk.rkt"
+         "mk2.rkt"
          "relational_basics.rkt"
          "normalize.rkt"
          "relational_NbE.rkt"
@@ -136,7 +136,7 @@
      `(,(restore-Πi rator1 rator2 arg fp)
        ,(restore-Πi rand1 rand2 arg fp))]))
 
-(define (make-varso vars ans)
+(defrel (make-varso vars ans)
   (condu
    [(== vars '()) (== ans '())]
    [(fresh (x xs a anso) (== vars `(,x . ,xs))
@@ -207,7 +207,7 @@
       ['() #f]
       [`(,ans) ans])))
 
-(define (unify-types vars lvl e1 e2 xs1 xs2 in-arg-mode?)
+(defrel (unify-types vars lvl e1 e2 xs1 xs2 in-arg-mode?)
   (condu
    ;; Case 1 -- we have a variable we need to unify, and
    ;; the type it needs to be
