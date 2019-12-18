@@ -136,7 +136,7 @@ Capitals for Integers, as much as possible, when the distinction is obvious
         (iter-Nat pos 0 succ2)))))
 
 ;; To get an Int back from a Nat, we need a correspondant to succ for Integers. 
-
+#|
 (claim Succ (-> Integer Integer))
 (define Succ
   (λ (k)
@@ -1856,7 +1856,7 @@ And if THAT doesn't work, we can try to prove it directly
           (Plus (Negate j) (Times j (Negative k-1)))
           #:by (symm (*-sub1-dist-r j (Negative k-1)))
           (Times j (Negative (add1 k-1))))))))
-#|
+
 (claim *-comm-pos
   (Π ([k Nat]
       [j Integer])
@@ -1898,135 +1898,135 @@ And if THAT doesn't work, we can try to prove it directly
 ;; GROUP STUFF: Putting it all together
 
 
-;; canonical kinds of proofs -- now using implicit arguments!
-|#
+;; canonical kinds of proofs
+
 (claim is-Assoc
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) U)))
 (define is-Assoc
-  (λi (λ (f)
-        (Π ([x S]
-            [y S]
-            [z S])
-          (= S
-             (f x (f y z))
-             (f (f x y) z))))))
-#|
+  (λ (S f)
+    (Π ([x S]
+        [y S]
+        [z S])
+       (= S
+          (f x (f y z))
+          (f (f x y) z)))))
+
 (claim is-Comm
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) U)))
 (define is-Comm
-  (λi (λ (f)
-        (Π ([x S]
-            [y S])
-          (= S
-             (f x y)
-             (f y x))))))
+  (λ (S f)
+    (Π ([x S]
+        [y S])
+       (= S
+          (f x y)
+          (f y x)))))
 
 (claim has-Identity
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) U)))
 (define has-Identity
-  (λi (λ (f)
-        (Σ ([e S])
-          (Π ([k S])
-             (Pair (= S (f e k) k)
-                   (= S (f k e) k)))))))
+  (λ (S f)
+    (Σ ([e S])
+      (Π ([k S])
+         (Pair (= S (f e k) k)
+               (= S (f k e) k))))))
 
 (claim has-Inverses
-  (Πi ([S U])
-      (Π ([f (-> S S S)]
-          [e (has-Identity f)]) U)))
+  (Π ([S U]
+      [f (-> S S S)]
+      [e (has-Identity S f)]) U))
 (define has-Inverses
-  (λi (λ (f e)
-        (Π ([k S])
-          (Σ ([k-inv S])
-             (Pair
-              (= S (f k k-inv) (car e))
-              (= S (f k-inv k) (car e))))))))
+  (λ (S f e)
+    (Π ([k S])
+      (Σ ([k-inv S])
+         (Pair
+          (= S (f k k-inv) (car e))
+          (= S (f k-inv k) (car e)))))))
 
 (claim Distributes-Left
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) (-> S S S) U)))
 (define Distributes-Left
-  (λi (λ (+ *)
-        (Π ([x S] [y S] [z S])
-          (= S
-             (* (+ x y) z)
-             (+ (* x z) (* y z)))))))
+  (λ (S + *)
+    (Π ([x S] [y S] [z S])
+      (= S
+         (* (+ x y) z)
+         (+ (* x z) (* y z))))))
 
 (claim Distributes-Right
-  (Πi  ([S U])
+  (Π ([S U])
     (-> (-> S S S) (-> S S S) U)))
 (define Distributes-Right
-  (λi (λ (+ *)
-        (Π ([x S] [y S] [z S])
-          (= S
-             (* x (+ y z))
-             (+ (* x y) (* x z)))))))
+  (λ (S + *)
+    (Π ([x S] [y S] [z S])
+      (= S
+         (* x (+ y z))
+         (+ (* x y) (* x z))))))
 
 (claim No-Proper-Divisors
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) S U)))
 (define No-Proper-Divisors
-  (λi (λ (* z)
-        (Π ([x S]
-            [y S])
-          (-> (= S (* x y) z)
-            (Either (= S x z) (= S y z)))))))
-|#
+  (λ (S * z)
+    (Π ([x S]
+        [y S])
+      (-> (= S (* x y) z)
+          (Either (= S x z) (= S y z))))))
+
 ;; Abstract Algebras
 (claim Group
   (Πi ([S U])
     (-> (-> S S S) U)))
 (define Group
   (λi (λ (f)
-        (Pair (is-Assoc f)
-          (Σ ([e (has-Identity f)])
-            (has-Inverses f e))))))
-#|
+        (Pair (is-Assoc S f)
+          (Σ ([e (has-Identity S f)])
+            (has-Inverses S f e))))))
+
 (claim Abelian-Group
-  (Πi ([S U]) (-> (-> S S S) U)))
+  (Π ([S U]) (-> (-> S S S) U)))
 (define Abelian-Group
-  (λi (λ (f)
-        (Pair (Group f)
-          (is-Comm f)))))
+  (λ (S f)
+    (Pair (Group f)
+      (is-Comm S f))))
 
 (claim Ring
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) (-> S S S) U)))
 (define Ring
-  (λi (λ (+ *)
-        (Pair (Abelian-Group +)
-          (Pair (is-Assoc *)
-            (Pair (Distributes-Left + *)
-              (Distributes-Right + *)))))))
+  (λ (S + *)
+    (Pair (Abelian-Group S +)
+      (Pair (is-Assoc S *)
+        (Pair (Distributes-Left S + *)
+          (Distributes-Right S + *))))))
 
 (claim Ring-With-Unit-Element
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) (-> S S S) U)))
 (define Ring-With-Unit-Element
-  (λi (λ (+ *)
-        (Pair (Ring + *)
-          (has-Identity *)))))
+  (λ (S + *)
+    (Pair (Ring S + *)
+      (has-Identity S *))))
 
 (claim Commutative-Ring
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) (-> S S S) U)))
 (define Commutative-Ring
-  (λi (λ (+ *)
-        (Pair (Ring + *)
-          (is-Comm *)))))
+  (λ (S + *)
+    (Pair (Ring S + *)
+      (is-Comm S *))))
 
 
 (claim Integral-Domain
-  (Πi ([S U])
+  (Π ([S U])
     (-> (-> S S S) (-> S S S) U)))
 (define Integral-Domain
-  (λi (λ (+ *)
-        (Pair (Commutative-Ring + *)
-          (Σ ([z S])
-            (No-Proper-Divisors * z))))))
+  (λ (S + *)
+    (Pair (Commutative-Ring S + *)
+      (Σ ([z S])
+        (No-Proper-Divisors S * z)))))
 
 
 
@@ -2055,7 +2055,7 @@ And if THAT doesn't work, we can try to prove it directly
       +-has-inverses)))
 
 (claim PlusIsAnAbelianGroup
-  (Abelian-Group Plus))
+  (Abelian-Group Integer Plus))
 (define PlusIsAnAbelianGroup
   (cons IntegersFormAGroup
     +-comm))
@@ -2308,7 +2308,7 @@ And if THAT doesn't work, we can try to prove it directly
   (cons Integers-Form-A-Commutative-Ring
     (cons Zero
       Zero-Has-No-Proper-Divisors)))
-|#
+
 ;; End of Document
 
 
@@ -2320,3 +2320,4 @@ And if THAT doesn't work, we can try to prove it directly
 
 ;; TODO: can we generalize what it means to go from a
 ;; property on Nats to a property on Integers?
+|#

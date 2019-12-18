@@ -1,6 +1,6 @@
 #lang racket
 
-(require "mk2.rkt")
+(require "mk.rkt")
 
 (require (except-in "basics.rkt" fresh extend-env))
 
@@ -22,13 +22,13 @@
 ;;;;;;;;;;;;;;;;;
 ; This file provides helper relations to be used by the type inferencer and
 ; relational normalizer
-(defrel (membero x ls)
+(define (membero x ls)
   (condu
    [(fresh (d) (== ls `(,x . ,d)))]
    [(fresh (a d) (== ls `(,a . ,d))
            (membero x d))]))
 
-(defrel (assvo x ls o)
+(define (assvo x ls o)
   (condu
    [(== ls '()) (== o #f)]
    [(fresh (a d ls^)
@@ -43,14 +43,14 @@
 ;;;;;;;;;;;;;;;;
 
 ;; typical environment extension with a free (typed) variable
-(defrel (extend-env x τ Γ new-Γ)
+(define (extend-env x τ Γ new-Γ)
   (== new-Γ `((,x (free ,τ)) . ,Γ)))
 
-(defrel (extend-ρ x v ρ new-ρ)
+(define (extend-ρ x v ρ new-ρ)
   (== new-ρ `((,x (val ,v)) . ,ρ)))
 
 ;; environment application
-(defrel (apply-Γ Γ x τ)
+(define (apply-Γ Γ x τ)
   (fresh (y assoc Γ^)
          (== Γ `((,y ,assoc) . ,Γ^))
          (conde
@@ -60,7 +60,7 @@
                      [(fresh (v) (== assoc `(def ,τ ,v)))])]
           [(apply-Γ Γ^ x τ)])))
 
-(defrel (apply-ρ ρ x v)
+(define (apply-ρ ρ x v)
   (fresh (y assoc ρ^)
          (== ρ `((,y ,assoc) . ,ρ^))
          (conde
@@ -68,12 +68,12 @@
           [(== y x) (fresh (τ) (== assoc `(def ,τ ,v)))]
           [(apply-ρ ρ^ x v)])))
 
-(defrel (subst/ig x v exp new)
+(define (subst/ig x v exp new)
   (fresh (b)
            (== exp `(λ (,x) ,b))
            (subst x v b new)))
 
-(defrel (subst x v exp new)
+(define (subst x v exp new)
   (conde
    [(== x exp) (== new v)]
    [(symbolo exp) (=/= x exp) (== new exp)]
@@ -114,7 +114,7 @@
                               (== new `(λ (,y) ,new-b))
                               (subst x v b new-b))]))]))
 
-(defrel (built-ino s)
+(define (built-ino s)
   (symbolo s)
   (conde
    [(== s 'U)]
@@ -124,7 +124,7 @@
    [(== s 'nil)]
    [(== s 'vecnil)]))
 
-(defrel (not-built-in s)
+(define (not-built-in s)
   (=/= s 'add1)
   (=/= s 'List)
   (=/= s 'quote)
@@ -135,7 +135,7 @@
   (=/= s 'λ)
   (=/= s 'vec::))
 
-(defrel (varo s)
+(define (varo s)
   (symbolo s)
   (=/= s 'U)
   (=/= s 'Atom)

@@ -1,6 +1,6 @@
 #lang racket
 
-(require "mk2.rkt")
+(require "mk.rkt")
 (require "relational_basics.rkt")
 
 (provide normalizo)
@@ -11,13 +11,13 @@
 ;; to be used the inferencer
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(defrel (normalizo ρ τ exp o)
+(define (normalizo ρ τ exp o)
   (fresh (v new-τ)
          (valofo ρ exp v)
          (valofo ρ τ new-τ)
          (read-backo ρ new-τ v o)))
 
-(defrel (valofo ρ exp v)
+(define (valofo ρ exp v)
   (conde
    ; single-symbol cases
    [(symbolo exp)
@@ -92,7 +92,7 @@
            (do-appo rator-v rand-v v)
            )]))
 
-(defrel (valof-closuro clo α v)
+(define (valof-closuro clo α v)
   (conde
    [(fresh (x c ρ ρ^)
            (== clo `(CLOS ,x ,c ,ρ))
@@ -100,7 +100,7 @@
            (valofo ρ^ c v))]
    ))
 
-(defrel (read-backo Γ τ exp norm)
+(define (read-backo Γ τ exp norm)
   (conde
    ;; types
    [(== τ 'UNIVERSE) (read-back-typo Γ exp norm)]
@@ -154,7 +154,7 @@
            (== exp `(NEU ,A ,ne))
            (read-back-neutralo Γ ne norm))]))
 
-(defrel (do-appo v-rat v-ran o)
+(define (do-appo v-rat v-ran o)
   (conde
    [(fresh (x c)
            (== v-rat `(LAM ,x ,c))
@@ -164,7 +164,7 @@
            (== o `(N-App ,ne ,v-ran)))]))
 
 
-(defrel (read-back-typo Γ exp norm)
+(define (read-back-typo Γ exp norm)
   (conde
    [(== exp 'UNIVERSE) (== norm 'U)]
    [(== exp 'NAT) (== norm 'Nat)]
@@ -189,7 +189,7 @@
            (== exp `(NEU UNIVERSE ,ne))
            (read-back-neutralo Γ ne norm))]))
 
-(defrel (read-back-neutralo Γ ne norm)
+(define (read-back-neutralo Γ ne norm)
   (conde
    [(== ne `(VAR ,norm))]
    [(fresh (rat A ran rat-v ran-v)
